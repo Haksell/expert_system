@@ -43,13 +43,13 @@ class Rules:
         VALUE = r"!?[A-Z]"
         SYMBOL = r"\+|\||\^"
         if not re.fullmatch(rf"{VALUE}(({SYMBOL}){VALUE})*", expr):
-            __panic("Invalid expression: {expr}")
+            __syntax_error("Invalid expression: {expr}")
         return re.findall(rf"{VALUE}|{SYMBOL}", expr)
 
     def __init__(self, line):
         parts = re.split(r"<?=>", line)
         if len(parts) != 2:
-            __panic(f"Invalid line: {line}")
+            __syntax_error(f"Invalid line: {line}")
         lhs, rhs = parts
         self.__lhs = Rules.__parse_expression(lhs)
         self.__is_equivalent = "<=>" in line
