@@ -2,10 +2,23 @@ import re
 import sys
 
 
+def __panic(message):
+    print(message, file=sys.stderr)
+    sys.exit(1)
+
+
+def __syntax_error(message):
+    print("Syntax Error: ", end="", file=sys.stderr)
+
+
 class Facts:
     def __init__(self, line):
-        assert re.fullmatch(r"=[A-Z]*", line)
         self.__facts = list(line[1:])
+        invalid_facts = [
+            fact for fact in self.__facts if len(fact) != 1 or not fact.isupper()
+        ]
+        if invalid_facts:
+            __syntax_error(f"Invalid Facts: {invalid_facts}")
 
     def __repr__(self):
         return f"""{self.__class__.__name__}('={"".join(self.__facts)}')"""
@@ -13,8 +26,12 @@ class Facts:
 
 class Queries:
     def __init__(self, line):
-        assert re.fullmatch(r"\?[A-Z]*", line)
         self.__queries = list(line[1:])
+        invalid_queries = [
+            query for query in self.__queries if len(query) != 1 or not query.isupper()
+        ]
+        if invalid_queries:
+            __syntax_error(f"Invalid Queries: {invalid_queries}")
 
     def __repr__(self):
         return f"""{self.__class__.__name__}('?{"".join(self.__queries)}')"""
@@ -44,11 +61,6 @@ class Rules:
         lhs = " ".join(self.__lhs)
         rhs = " ".join(self.__rhs)
         return f"{cls}('{lhs} {middle} {rhs}')"
-
-
-def __panic(message):
-    print(message)
-    sys.exit(1)
 
 
 def __parse_line(line):
