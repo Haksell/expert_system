@@ -1,18 +1,20 @@
 import argparse
-from src import OOGA
+from src import parse_file
 
 
 def __parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", type=str, help="Filename of the puzzle to solve")
-    args = parser.parse_args()
-    return args
+    parser.add_argument(
+        "filename", type=str, help="Filename containing the rules and facts"
+    )
+    return parser.parse_args()
 
 
 def main():
     args = __parse_args()
-    print(args)
-    print(OOGA)
+    lines = parse_file(args.filename)
+    for line in lines:
+        print(line)
 
 
 if __name__ == "__main__":

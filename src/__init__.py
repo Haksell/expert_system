@@ -1,1 +1,1 @@
-from .lol import OOGA  # noqa
+from .parse_file import parse_file  # noqa
