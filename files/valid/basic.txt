@@ -1,4 +1,6 @@
-A => B
-B => C
-=A
+C | !C => A
+
+=B
 ?ABC
+
+what is A,B,C

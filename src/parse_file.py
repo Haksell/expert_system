@@ -23,6 +23,9 @@ class Facts:
     def __repr__(self):
         return f"""{self.__class__.__name__}('={"".join(self.__facts)}')"""
 
+    def __iter__(self):
+        yield from self.__facts
+
 
 class Queries:
     def __init__(self, line):
@@ -36,8 +39,11 @@ class Queries:
     def __repr__(self):
         return f"""{self.__class__.__name__}('?{"".join(self.__queries)}')"""
 
+    def __iter__(self):
+        yield from self.__queries
 
-class Rules:
+
+class Rule:
     @staticmethod
     def __parse_expression(expr):
         VALUE = r"!?[A-Z]"
@@ -51,9 +57,9 @@ class Rules:
         if len(parts) != 2:
             __syntax_error(f"Invalid line: {line}")
         lhs, rhs = parts
-        self.__lhs = Rules.__parse_expression(lhs)
+        self.__lhs = Rule.__parse_expression(lhs)
         self.__is_equivalent = "<=>" in line
-        self.__rhs = Rules.__parse_expression(rhs)
+        self.__rhs = Rule.__parse_expression(rhs)
 
     def __repr__(self):
         cls = self.__class__.__name__
@@ -69,7 +75,7 @@ def __parse_line(line):
         if line.startswith("=")
         else Queries(line)
         if line.startswith("?")
-        else Rules(line)
+        else Rule(line)
     )
 
 
