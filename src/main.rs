@@ -6,8 +6,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::ParseProgramError::InvalidFact;
-
 #[derive(Debug, Parser)]
 struct Args {
     filename: PathBuf,
