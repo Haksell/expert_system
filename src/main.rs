@@ -43,13 +43,14 @@ enum Token {
     Fact(char),
     Not,
     BinaryOperation(BinaryOperation),
+    LogicalLink(LogicalLink),
     LeftParenthesis,
     RightParenthesis,
 }
 
 // TODO: find a better name
 #[derive(Debug)]
-enum LogicLink {
+enum LogicalLink {
     Implication,
     Equivalence,
 }
@@ -57,17 +58,23 @@ enum LogicLink {
 #[derive(Debug)]
 struct Expression;
 
+impl Expression {
+    fn build(tokens: &[Token]) -> Result<Self, ParseProgramError> {
+        todo!()
+    }
+}
+
 #[derive(Debug)]
 struct Rule {
     left: Expression,
-    logic_link: LogicLink,
+    logical_link: LogicalLink,
     right: Expression,
 }
 
 impl Rule {
     fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
-        Ok(Self {})
+        todo!()
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
