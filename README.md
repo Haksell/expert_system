@@ -26,7 +26,7 @@ the engine must support the following features:
 - [ ] multiple rules with the same conclusion. For example, several rules can result
 in the same fact as their conclusion.
 - [ ] AND in conclusions. e.g. "If A then B and C".
-- [ ] Parentheses in expressions. These should be interpreted similarly to how they
+- [ ] parentheses in expressions. these should be interpreted similarly to how they
 are used in arithmetic expressions.
 
 the order of operations is:

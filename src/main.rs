@@ -13,11 +13,12 @@ struct Args {
 
 // TODO: cleaner error messages through custom impl Debug
 #[derive(Debug)]
+#[expect(unused)]
 enum ParseProgramError {
-    IoError(#[expect(unused)] std::io::Error),
-    InvalidLine(#[expect(unused)] String),
-    InvalidFact(#[expect(unused)] char),
-    InvalidQuery(#[expect(unused)] char),
+    IoError(std::io::Error),
+    InvalidLine(String),
+    InvalidFact(char),
+    InvalidQuery(char),
     MissingFacts,
     MissingQueries,
     DuplicateFacts,
@@ -32,12 +33,45 @@ impl From<std::io::Error> for ParseProgramError {
     }
 }
 
+enum BinaryOperation {
+    And,
+    Or,
+    Xor,
+}
+
+enum Token {
+    Fact(char),
+    Not,
+    BinaryOperation(BinaryOperation),
+    LeftParenthesis,
+    RightParenthesis,
+}
+
+// TODO: find a better name
 #[derive(Debug)]
-struct Rule {}
+enum LogicLink {
+    Implication,
+    Equivalence,
+}
+
+#[derive(Debug)]
+struct Expression;
+
+#[derive(Debug)]
+struct Rule {
+    left: Expression,
+    logic_link: LogicLink,
+    right: Expression,
+}
 
 impl Rule {
     fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
+        let tokens = Self::tokenize(line)?;
         Ok(Self {})
+    }
+
+    fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
+        Ok(Vec::new())
     }
 }
 
