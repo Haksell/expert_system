@@ -38,6 +38,7 @@ the order of operations is:
 - [ ] reasoning visualization
 - [ ] OR and XOR in conclusions
 - [ ] biconditional rules (`<=>`)
+- [ ] `<=`
 - ... (at least one more bonus for 125)
 
 ## notes

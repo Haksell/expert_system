@@ -108,7 +108,7 @@ impl Program {
                 continue;
             }
             match line[0] {
-                'A'..='Z' => {
+                'A'..='Z' | '!' => {
                     if facts.is_some() {
                         return Err(ParseProgramError::RulesAfterFacts);
                     }
