@@ -56,19 +56,14 @@ enum LogicalLink {
 }
 
 #[derive(Debug)]
-struct Expression;
-
-impl Expression {
-    fn build(tokens: &[Token]) -> Result<Self, ParseProgramError> {
-        todo!()
-    }
-}
-
-#[derive(Debug)]
-struct Rule {
-    left: Expression,
-    logical_link: LogicalLink,
-    right: Expression,
+enum Rule {
+    Fact(char),
+    Not(Box<Rule>),
+    Or(Box<Rule>, Box<Rule>),
+    And(Box<Rule>, Box<Rule>),
+    Xor(Box<Rule>, Box<Rule>),
+    Implication(Box<Rule>, Box<Rule>),
+    Equivalence(Box<Rule>, Box<Rule>),
 }
 
 impl Rule {
