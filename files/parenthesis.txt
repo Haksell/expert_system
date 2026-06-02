@@ -1,0 +1,5 @@
+(A&B)|C => D
+W&(X|Y) => Z
+
+=CY
+?DZ # true, false

@@ -16,7 +16,7 @@ struct Args {
 #[expect(unused)]
 enum ParseProgramError {
     IoError(std::io::Error),
-    InvalidLine(String),
+    InvalidToken(String, String), // line, token
     InvalidFact(char),
     InvalidQuery(char),
     MissingFacts,
@@ -33,34 +33,26 @@ impl From<std::io::Error> for ParseProgramError {
     }
 }
 
-enum BinaryOperation {
-    And,
-    Or,
-    Xor,
-}
-
+#[derive(Debug, PartialEq)]
 enum Token {
     Fact(char),
     Not,
-    BinaryOperation(BinaryOperation),
-    LogicalLink(LogicalLink),
+    And,
+    Or,
+    Xor,
+    Implication,
+    ConverseImplication,
+    Equivalence,
     LeftParenthesis,
     RightParenthesis,
-}
-
-// TODO: find a better name
-#[derive(Debug)]
-enum LogicalLink {
-    Implication,
-    Equivalence,
 }
 
 #[derive(Debug)]
 enum Rule {
     Fact(char),
     Not(Box<Rule>),
-    Or(Box<Rule>, Box<Rule>),
     And(Box<Rule>, Box<Rule>),
+    Or(Box<Rule>, Box<Rule>),
     Xor(Box<Rule>, Box<Rule>),
     Implication(Box<Rule>, Box<Rule>),
     Equivalence(Box<Rule>, Box<Rule>),
@@ -69,11 +61,57 @@ enum Rule {
 impl Rule {
     fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
-        todo!()
+        // Self::parse(&tokens)
+        Ok(Self::Fact('Z'))
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
-        Ok(Vec::new())
+        let mut tokens = Vec::new();
+        let mut current_token = String::new();
+        for &c in line {
+            if current_token.is_empty() {
+                match c {
+                    'A'..='Z' => tokens.push(Token::Fact(c)),
+                    '(' => tokens.push(Token::LeftParenthesis),
+                    ')' => tokens.push(Token::RightParenthesis),
+                    '!' => tokens.push(Token::Not),
+                    '+' | '&' => tokens.push(Token::And),
+                    '|' => tokens.push(Token::Or),
+                    '^' => tokens.push(Token::Xor),
+                    '=' | '<' => current_token.push(c),
+                    '>' if tokens.last() == Some(&Token::ConverseImplication) => {
+                        if let Some(token) = tokens.last_mut() {
+                            *token = Token::Equivalence;
+                        }
+                    }
+                    _ => {
+                        return Err(ParseProgramError::InvalidToken(
+                            line.iter().collect(),
+                            c.to_string(),
+                        ));
+                    }
+                }
+            } else {
+                current_token.push(c);
+                match current_token.as_str() {
+                    "=>" => {
+                        tokens.push(Token::Implication);
+                        current_token.clear();
+                    }
+                    "<=" => {
+                        tokens.push(Token::ConverseImplication);
+                        current_token.clear();
+                    }
+                    _ => {
+                        return Err(ParseProgramError::InvalidToken(
+                            line.iter().collect(),
+                            current_token,
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(tokens)
     }
 }
 
@@ -103,12 +141,6 @@ impl Program {
                 continue;
             }
             match line[0] {
-                'A'..='Z' | '!' => {
-                    if facts.is_some() {
-                        return Err(ParseProgramError::RulesAfterFacts);
-                    }
-                    rules.push(Rule::parse(&line)?);
-                }
                 '=' => Self::parse_letters(
                     &mut facts,
                     &line[1..],
@@ -126,7 +158,12 @@ impl Program {
                         ParseProgramError::DuplicateQueries,
                     )?;
                 }
-                _ => return Err(ParseProgramError::InvalidLine(line.iter().collect())),
+                _ => {
+                    if facts.is_some() {
+                        return Err(ParseProgramError::RulesAfterFacts);
+                    }
+                    rules.push(Rule::parse(&line)?);
+                }
             }
         }
 
