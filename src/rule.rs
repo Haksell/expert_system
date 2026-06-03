@@ -14,12 +14,11 @@ pub enum Rule {
 impl Rule {
     pub fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
-        assert!(!tokens.is_empty());
+        assert!(!tokens.is_empty()); // TODO: remove
         let tokens = Self::clean(tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         println!("{tokens:?}");
-        // Self::build(&tokens)
-        Ok(Self::Fact('Z'))
+        Self::build(tokens)
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
@@ -68,6 +67,14 @@ impl Rule {
                 }
             }
         }
+
+        if !current_token.is_empty() {
+            return Err(ParseProgramError::InvalidToken(
+                line.iter().collect(),
+                current_token,
+            ));
+        }
+
         Ok(tokens)
     }
 
@@ -155,6 +162,59 @@ impl Rule {
         }
 
         output
+    }
+
+    fn build(tokens: Vec<Token>) -> Result<Self, ParseProgramError> {
+        let mut rules = Vec::new();
+
+        for token in tokens {
+            match token {
+                Token::Fact(c) => rules.push(Rule::Fact(c)),
+                Token::Not => {
+                    if let Some(rule) = rules.pop() {
+                        rules.push(Rule::Not(Box::new(rule)));
+                    } else {
+                        return Err(ParseProgramError::BuildFailed);
+                    }
+                }
+                Token::Equivalence
+                | Token::ConverseImplication
+                | Token::Implication
+                | Token::Xor
+                | Token::Or
+                | Token::And => {
+                    if let (Some(rule2), Some(rule1)) = (rules.pop(), rules.pop()) {
+                        rules.push(Rule::from_binary_token(token, rule1, rule2));
+                    } else {
+                        return Err(ParseProgramError::BuildFailed);
+                    }
+                }
+                Token::LeftParenthesis | Token::RightParenthesis => unreachable!(),
+            }
+        }
+
+        if rules.len() != 1 {
+            return Err(ParseProgramError::BuildFailed);
+        }
+
+        Ok(rules.pop().unwrap())
+    }
+
+    fn from_binary_token(token: Token, rule1: Rule, rule2: Rule) -> Rule {
+        let rule1 = Box::new(rule1);
+        let rule2 = Box::new(rule2);
+
+        match token {
+            Token::Equivalence => Rule::Equivalence(rule1, rule2),
+            Token::Implication => Rule::Implication(rule1, rule2),
+            Token::ConverseImplication => Rule::Implication(rule2, rule1),
+            Token::Xor => Rule::Xor(rule1, rule2),
+            Token::Or => Rule::Or(rule1, rule2),
+            Token::And => Rule::And(rule1, rule2),
+            Token::Fact(_) | Token::Not | Token::LeftParenthesis | Token::RightParenthesis => {
+                unreachable!()
+            }
+        }
     }
 }
 

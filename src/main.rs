@@ -31,6 +31,7 @@ enum ParseProgramError {
     UnbalancedParentheses,
     MissingImplication,
     MultipleImplications,
+    BuildFailed, // TODO: more specific
 }
 
 impl From<std::io::Error> for ParseProgramError {
@@ -43,8 +44,8 @@ impl From<std::io::Error> for ParseProgramError {
 enum Token {
     Fact(char),
     Equivalence,
-    ConverseImplication,
     Implication,
+    ConverseImplication,
     Xor,
     Or,
     And,
@@ -118,6 +119,7 @@ impl Program {
                         return Err(ParseProgramError::RulesAfterFacts);
                     }
                     rules.push(Rule::parse(&line)?);
+                    println!("{:?}", rules.last().unwrap());
                 }
             }
         }
