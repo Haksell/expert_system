@@ -113,6 +113,7 @@ impl Rule {
         }
     }
 
+    // TODO: handle broken input (A&B|)
     fn infix_to_rpn(tokens: Vec<Token>) -> Vec<Token> {
         let mut output = Vec::new();
         let mut operators = Vec::new();
@@ -126,6 +127,7 @@ impl Rule {
                         output.push(operators.pop().unwrap());
                     }
                     operators.pop();
+                    // TODO: remove?
                     if let Some(Token::Not) = operators.last() {
                         output.push(operators.pop().unwrap());
                     }
@@ -153,5 +155,88 @@ impl Rule {
         }
 
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use Token::*;
+
+    #[test]
+    fn infix_to_rpn() {
+        assert_eq!(
+            Rule::infix_to_rpn(vec![Fact('C'), Implication, Fact('E')]),
+            vec![Fact('C'), Fact('E'), Implication]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![
+                Fact('A'),
+                And,
+                Fact('B'),
+                And,
+                Fact('C'),
+                Implication,
+                Fact('D')
+            ]),
+            vec![
+                Fact('A'),
+                Fact('B'),
+                And,
+                Fact('C'),
+                And,
+                Fact('D'),
+                Implication
+            ]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![Fact('A'), And, Not, Fact('B'), Implication, Fact('F')]),
+            vec![Fact('A'), Fact('B'), Not, And, Fact('F'), Implication]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![Fact('A'), And, Fact('B'), Or, Fact('C')]),
+            vec![Fact('A'), Fact('B'), And, Fact('C'), Or]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![Fact('A'), Or, Fact('B'), And, Fact('C')]),
+            vec![Fact('A'), Fact('B'), Fact('C'), And, Or]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![
+                LeftParenthesis,
+                Fact('A'),
+                Or,
+                Fact('B'),
+                RightParenthesis,
+                And,
+                Fact('C')
+            ]),
+            vec![Fact('A'), Fact('B'), Or, Fact('C'), And]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![
+                Fact('A'),
+                Or,
+                LeftParenthesis,
+                Fact('B'),
+                And,
+                Fact('C'),
+                RightParenthesis
+            ]),
+            vec![Fact('A'), Fact('B'), Fact('C'), And, Or]
+        );
+        assert_eq!(
+            Rule::infix_to_rpn(vec![
+                Fact('A'),
+                And,
+                Not,
+                LeftParenthesis,
+                Fact('B'),
+                Or,
+                Fact('C'),
+                RightParenthesis
+            ]),
+            vec![Fact('A'), Fact('B'), Fact('C'), Or, Not, And]
+        );
     }
 }
