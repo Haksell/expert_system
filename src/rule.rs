@@ -7,9 +7,7 @@ pub enum Rule {
     Not(Box<Rule>),
     And(Box<Rule>, Box<Rule>),
     Or(Box<Rule>, Box<Rule>),
-    Xor(Box<Rule>, Box<Rule>), // TODO: think about Not(Equivalence)
-    Implication(Box<Rule>, Box<Rule>),
-    Equivalence(Box<Rule>, Box<Rule>),
+    Xor(Box<Rule>, Box<Rule>),
 }
 
 impl Rule {
@@ -202,9 +200,9 @@ impl Rule {
         let rule2 = Box::new(rule2);
 
         match token {
-            Token::Equivalence => Rule::Equivalence(rule1, rule2),
-            Token::Implication => Rule::Implication(rule1, rule2),
-            Token::ConverseImplication => Rule::Implication(rule2, rule1),
+            Token::Equivalence => Rule::Not(Box::new(Rule::Xor(rule1, rule2))),
+            Token::Implication => Rule::Or(Box::new(Rule::Not(rule1)), rule2),
+            Token::ConverseImplication => Rule::Or(rule1, Box::new(Rule::Not(rule2))),
             Token::Xor => Rule::Xor(rule1, rule2),
             Token::Or => Rule::Or(rule1, rule2),
             Token::And => Rule::And(rule1, rule2),
@@ -240,17 +238,12 @@ impl Rule {
                 }
                 _ => unreachable!(),
             },
-            Rule::Or(child1, child2)
-            | Rule::And(child1, child2)
-            | Rule::Xor(child1, child2)
-            | Rule::Implication(child1, child2)
-            | Rule::Equivalence(child1, child2) => {
+            Rule::Or(child1, child2) | Rule::And(child1, child2) | Rule::Xor(child1, child2) => {
                 // store in variables to avoid short-circuiting
                 let b1 = child1.apply_de_morgan();
                 let b2 = child2.apply_de_morgan();
                 b1 || b2
             }
-            _ => unreachable!(),
         }
     }
 
@@ -266,11 +259,7 @@ impl Rule {
                 }
                 _ => unreachable!(),
             },
-            Rule::Or(child1, child2)
-            | Rule::And(child1, child2)
-            | Rule::Xor(child1, child2)
-            | Rule::Implication(child1, child2)
-            | Rule::Equivalence(child1, child2) => {
+            Rule::Or(child1, child2) | Rule::And(child1, child2) | Rule::Xor(child1, child2) => {
                 child1.remove_double_negation();
                 child2.remove_double_negation();
             }
