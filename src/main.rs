@@ -38,15 +38,32 @@ impl From<std::io::Error> for ParseProgramError {
 #[derive(Debug, PartialEq)]
 enum Token {
     Fact(char),
-    Not,
-    And,
-    Or,
-    Xor,
-    Implication,
-    ConverseImplication,
     Equivalence,
+    ConverseImplication,
+    Implication,
+    Xor,
+    Or,
+    And,
+    Not,
     LeftParenthesis,
     RightParenthesis,
+}
+
+impl Token {
+    fn precedence(&self) -> u32 {
+        match self {
+            Token::Equivalence => 1,
+            Token::ConverseImplication => 1,
+            Token::Implication => 1,
+            Token::Xor => 2,
+            Token::Or => 3,
+            Token::And => 4,
+            Token::Not => 5,
+            Token::Fact(_) | Token::LeftParenthesis | Token::RightParenthesis => {
+                unreachable!()
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -65,7 +82,10 @@ impl Rule {
         let tokens = Self::tokenize(line)?;
         assert!(!tokens.is_empty());
         let tokens = Self::clean(tokens)?;
-        todo!()
+        let tokens = Self::infix_to_rpn(tokens);
+        println!("{tokens:?}");
+        // Self::build(&tokens)
+        Ok(Self::Fact('Z'))
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
@@ -118,7 +138,8 @@ impl Rule {
     }
 
     fn clean(tokens: Vec<Token>) -> Result<Vec<Token>, ParseProgramError> {
-        let mut cleaned_tokens = Vec::new();
+        // TODO: don't add left and right parenthesis
+        let mut cleaned_tokens = vec![Token::LeftParenthesis];
         let mut cnt_open = 0;
         let mut cnt_implications = 0;
 
@@ -134,10 +155,13 @@ impl Rule {
                 Token::Not if cleaned_tokens.last() == Some(&Token::Not) => {
                     cleaned_tokens.pop();
                 }
-                Token::Implication | Token::ConverseImplication | Token::Equivalence => {
-                    cnt_implications += 1;
+                _ => {
+                    cnt_implications += matches!(
+                        token,
+                        Token::Implication | Token::ConverseImplication | Token::Equivalence
+                    ) as u32;
+                    cleaned_tokens.push(token)
                 }
-                _ => cleaned_tokens.push(token),
             }
         }
 
@@ -148,10 +172,53 @@ impl Rule {
         }
 
         if cnt_open == 0 {
+            cleaned_tokens.push(Token::RightParenthesis);
             Ok(cleaned_tokens)
         } else {
             Err(ParseProgramError::UnbalancedParentheses)
         }
+    }
+
+    fn infix_to_rpn(tokens: Vec<Token>) -> Vec<Token> {
+        let mut output = Vec::new();
+        let mut operators = Vec::new();
+
+        for token in tokens {
+            match token {
+                Token::Fact(_) => output.push(token),
+                Token::Not | Token::LeftParenthesis => operators.push(token),
+                Token::RightParenthesis => {
+                    while operators.last() != Some(&Token::LeftParenthesis) {
+                        output.push(operators.pop().unwrap());
+                    }
+                    operators.pop();
+                    if let Some(Token::Not) = operators.last() {
+                        output.push(operators.pop().unwrap());
+                    }
+                }
+                Token::Equivalence
+                | Token::ConverseImplication
+                | Token::Implication
+                | Token::Xor
+                | Token::Or
+                | Token::And => {
+                    while operators.last().is_some_and(|top| {
+                        top != &Token::LeftParenthesis && top.precedence() >= token.precedence()
+                    }) {
+                        output.push(operators.pop().unwrap());
+                    }
+                    // TODO: handle NOT???
+                    operators.push(token);
+                }
+            }
+        }
+
+        while let Some(operator) = operators.pop() {
+            assert_ne!(operator, Token::LeftParenthesis);
+            output.push(operator);
+        }
+
+        output
     }
 }
 
