@@ -15,7 +15,7 @@ impl Rule {
     pub fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
         assert!(!tokens.is_empty()); // TODO: remove
-        let tokens = Self::clean(tokens)?;
+        Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         println!("{tokens:?}");
         Self::build(tokens)
@@ -78,9 +78,7 @@ impl Rule {
         Ok(tokens)
     }
 
-    fn clean(tokens: Vec<Token>) -> Result<Vec<Token>, ParseProgramError> {
-        // TODO: don't add left and right parenthesis
-        let mut cleaned_tokens = vec![Token::LeftParenthesis];
+    fn check(tokens: &[Token]) -> Result<(), ParseProgramError> {
         let mut cnt_open = 0;
         let mut cnt_implications = 0;
 
@@ -93,15 +91,11 @@ impl Rule {
                     }
                     cnt_open -= 1;
                 }
-                Token::Not if cleaned_tokens.last() == Some(&Token::Not) => {
-                    cleaned_tokens.pop();
-                }
                 _ => {
                     cnt_implications += matches!(
                         token,
                         Token::Implication | Token::ConverseImplication | Token::Equivalence
                     ) as u32;
-                    cleaned_tokens.push(token)
                 }
             }
         }
@@ -113,8 +107,7 @@ impl Rule {
         }
 
         if cnt_open == 0 {
-            cleaned_tokens.push(Token::RightParenthesis);
-            Ok(cleaned_tokens)
+            Ok(())
         } else {
             Err(ParseProgramError::UnbalancedParentheses)
         }
