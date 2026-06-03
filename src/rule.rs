@@ -1,6 +1,7 @@
 use crate::{ParseProgramError, Token};
 
-#[derive(Debug)]
+// TODO: don't implement Clone
+#[derive(Clone, Debug)]
 pub enum Rule {
     Fact(char),
     Not(Box<Rule>),
@@ -18,7 +19,10 @@ impl Rule {
         Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         println!("{tokens:?}");
-        Self::build(tokens)
+        let mut rule = Self::build(tokens)?;
+        while rule.apply_de_morgan() {}
+        rule.remove_double_negation();
+        Ok(rule)
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
@@ -206,6 +210,69 @@ impl Rule {
             Token::And => Rule::And(rule1, rule2),
             Token::Fact(_) | Token::Not | Token::LeftParenthesis | Token::RightParenthesis => {
                 unreachable!()
+            }
+        }
+    }
+
+    // TODO: without .clone()
+    // TODO: try in one pass
+    fn apply_de_morgan(&mut self) -> bool {
+        match self {
+            Rule::Fact(_) => false,
+            Rule::Not(child) => match *child.clone() {
+                Rule::Fact(_) => false,
+                Rule::Not(_) => child.apply_de_morgan(),
+                Rule::Or(grandchild1, grandchild2) => {
+                    let mut left = Rule::Not(grandchild1);
+                    let mut right = Rule::Not(grandchild2);
+                    left.apply_de_morgan();
+                    right.apply_de_morgan();
+                    *self = Rule::And(Box::new(left), Box::new(right));
+                    true
+                }
+                Rule::And(grandchild1, grandchild2) => {
+                    let mut left = Rule::Not(grandchild1);
+                    let mut right = Rule::Not(grandchild2);
+                    left.apply_de_morgan();
+                    right.apply_de_morgan();
+                    *self = Rule::Or(Box::new(left), Box::new(right));
+                    true
+                }
+                _ => unreachable!(),
+            },
+            Rule::Or(child1, child2)
+            | Rule::And(child1, child2)
+            | Rule::Xor(child1, child2)
+            | Rule::Implication(child1, child2)
+            | Rule::Equivalence(child1, child2) => {
+                // store in variables to avoid short-circuiting
+                let b1 = child1.apply_de_morgan();
+                let b2 = child2.apply_de_morgan();
+                b1 || b2
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // TODO: without .clone()
+    fn remove_double_negation(&mut self) {
+        match self {
+            Rule::Fact(_) => {}
+            Rule::Not(child) => match *child.clone() {
+                Rule::Fact(_) => {}
+                Rule::Not(grandchild) => {
+                    *self = *grandchild.clone();
+                    self.remove_double_negation();
+                }
+                _ => unreachable!(),
+            },
+            Rule::Or(child1, child2)
+            | Rule::And(child1, child2)
+            | Rule::Xor(child1, child2)
+            | Rule::Implication(child1, child2)
+            | Rule::Equivalence(child1, child2) => {
+                child1.remove_double_negation();
+                child2.remove_double_negation();
             }
         }
     }
