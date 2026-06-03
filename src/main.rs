@@ -25,7 +25,8 @@ enum ParseProgramError {
     QueriesBeforeFacts,
     RulesAfterFacts,
     UnbalancedParentheses,
-    BuildFailed, // TODO: more specific
+    MissingImplication,
+    MultipleImplications,
 }
 
 impl From<std::io::Error> for ParseProgramError {
@@ -119,6 +120,7 @@ impl Rule {
     fn clean(tokens: Vec<Token>) -> Result<Vec<Token>, ParseProgramError> {
         let mut cleaned_tokens = Vec::new();
         let mut cnt_open = 0;
+        let mut cnt_implications = 0;
 
         for token in tokens {
             match token {
@@ -132,8 +134,17 @@ impl Rule {
                 Token::Not if cleaned_tokens.last() == Some(&Token::Not) => {
                     cleaned_tokens.pop();
                 }
+                Token::Implication | Token::ConverseImplication | Token::Equivalence => {
+                    cnt_implications += 1;
+                }
                 _ => cleaned_tokens.push(token),
             }
+        }
+
+        match cnt_implications {
+            0 => return Err(ParseProgramError::MissingImplication),
+            1 => {}
+            _ => return Err(ParseProgramError::MultipleImplications),
         }
 
         if cnt_open == 0 {
