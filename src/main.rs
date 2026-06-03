@@ -54,7 +54,7 @@ enum Rule {
     Not(Box<Rule>),
     And(Box<Rule>, Box<Rule>),
     Or(Box<Rule>, Box<Rule>),
-    Xor(Box<Rule>, Box<Rule>),
+    Xor(Box<Rule>, Box<Rule>), // TODO: think about Not(Equivalence)
     Implication(Box<Rule>, Box<Rule>),
     Equivalence(Box<Rule>, Box<Rule>),
 }

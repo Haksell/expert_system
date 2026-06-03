@@ -35,6 +35,7 @@ the order of operations is:
 ## bonus
 
 - [ ] interactive fact validation
+- [ ] multiple queries and facts in same file
 - [ ] reasoning visualization
 - [ ] OR and XOR in conclusions
 - [ ] biconditional rules (`<=>`)
