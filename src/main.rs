@@ -25,6 +25,7 @@ enum ParseProgramError {
     DuplicateQueries,
     QueriesBeforeFacts,
     RulesAfterFacts,
+    BuildFailed, // TODO: more specific
 }
 
 impl From<std::io::Error> for ParseProgramError {
@@ -61,8 +62,8 @@ enum Rule {
 impl Rule {
     fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
-        // Self::parse(&tokens)
-        Ok(Self::Fact('Z'))
+        assert!(!tokens.is_empty());
+        todo!()
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
@@ -70,7 +71,7 @@ impl Rule {
         let mut current_token = String::new();
         for &c in line {
             if current_token.is_empty() {
-                match c {
+                match &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&c {
                     'A'..='Z' => tokens.push(Token::Fact(c)),
                     '(' => tokens.push(Token::LeftParenthesis),
                     ')' => tokens.push(Token::RightParenthesis),
