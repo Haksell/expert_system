@@ -236,7 +236,14 @@ impl Rule {
                     *self = Rule::Or(Box::new(left), Box::new(right));
                     true
                 }
-                _ => unreachable!(),
+                Rule::Xor(grandchild1, grandchild2) => {
+                    let mut left = Rule::Not(grandchild1);
+                    let mut right = grandchild2;
+                    left.apply_de_morgan();
+                    right.apply_de_morgan();
+                    *self = Rule::Xor(Box::new(left), right);
+                    true
+                }
             },
             Rule::Or(child1, child2) | Rule::And(child1, child2) | Rule::Xor(child1, child2) => {
                 // store in variables to avoid short-circuiting

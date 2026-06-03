@@ -48,3 +48,5 @@ the order of operations is:
 - all binary gates: https://gist.github.com/cky26/58b28f011d512de1620719517dd7c0d4
 
 A|(B&C)|(D&E)
+!(A^B)
+!A^!B
