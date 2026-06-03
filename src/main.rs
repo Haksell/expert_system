@@ -13,18 +13,18 @@ struct Args {
 
 // TODO: cleaner error messages through custom impl Debug
 #[derive(Debug)]
-#[expect(unused)]
 enum ParseProgramError {
-    IoError(std::io::Error),
-    InvalidToken(String, String), // line, token
-    InvalidFact(char),
-    InvalidQuery(char),
+    IoError(#[expect(unused)] std::io::Error),
+    InvalidToken(#[expect(unused)] String, #[expect(unused)] String), // line, token
+    InvalidFact(#[expect(unused)] char),
+    InvalidQuery(#[expect(unused)] char),
     MissingFacts,
     MissingQueries,
     DuplicateFacts,
     DuplicateQueries,
     QueriesBeforeFacts,
     RulesAfterFacts,
+    UnbalancedParentheses,
     BuildFailed, // TODO: more specific
 }
 
@@ -63,6 +63,7 @@ impl Rule {
     fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
         assert!(!tokens.is_empty());
+        let tokens = Self::clean(tokens)?;
         todo!()
     }
 
@@ -71,7 +72,7 @@ impl Rule {
         let mut current_token = String::new();
         for &c in line {
             if current_token.is_empty() {
-                match &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&c {
+                match c {
                     'A'..='Z' => tokens.push(Token::Fact(c)),
                     '(' => tokens.push(Token::LeftParenthesis),
                     ')' => tokens.push(Token::RightParenthesis),
@@ -113,6 +114,33 @@ impl Rule {
             }
         }
         Ok(tokens)
+    }
+
+    fn clean(tokens: Vec<Token>) -> Result<Vec<Token>, ParseProgramError> {
+        let mut cleaned_tokens = Vec::new();
+        let mut cnt_open = 0;
+
+        for token in tokens {
+            match token {
+                Token::LeftParenthesis => cnt_open += 1,
+                Token::RightParenthesis => {
+                    if cnt_open == 0 {
+                        return Err(ParseProgramError::UnbalancedParentheses);
+                    }
+                    cnt_open -= 1;
+                }
+                Token::Not if cleaned_tokens.last() == Some(&Token::Not) => {
+                    cleaned_tokens.pop();
+                }
+                _ => cleaned_tokens.push(token),
+            }
+        }
+
+        if cnt_open == 0 {
+            Ok(cleaned_tokens)
+        } else {
+            Err(ParseProgramError::UnbalancedParentheses)
+        }
     }
 }
 
