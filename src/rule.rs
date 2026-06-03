@@ -1,4 +1,5 @@
 use crate::{ParseProgramError, Token};
+use itertools::Itertools as _;
 
 // TODO: don't implement Clone
 #[derive(Clone, Debug)]
@@ -17,10 +18,7 @@ impl Rule {
         Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         println!("{tokens:?}");
-        let mut rule = Self::build(tokens)?;
-        while rule.apply_de_morgan() {}
-        rule.remove_double_negation();
-        Ok(rule)
+        Self::build(tokens)
     }
 
     fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
@@ -271,6 +269,28 @@ impl Rule {
                 child2.remove_double_negation();
             }
         }
+    }
+
+    pub fn merge(rules: Vec<Rule>) -> Rule {
+        fn helper(rules: &mut [Option<Rule>], lo: usize, hi: usize) -> Rule {
+            if lo == hi - 1 {
+                rules[lo].take().unwrap()
+            } else {
+                let mi = usize::midpoint(lo, hi);
+                Rule::And(
+                    Box::new(helper(rules, lo, mi)),
+                    Box::new(helper(rules, mi, hi)),
+                )
+            }
+        }
+
+        // TODO: without option
+        let mut rules = rules.into_iter().map(Some).collect_vec();
+        let rules_count = rules.len();
+        let mut rule = helper(&mut rules, 0, rules_count);
+        while rule.apply_de_morgan() {}
+        rule.remove_double_negation();
+        rule
     }
 }
 

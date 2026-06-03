@@ -73,7 +73,7 @@ impl Token {
 
 #[derive(Debug)]
 struct Program {
-    rules: Vec<Rule>,
+    rule: Rule,
     facts: Vec<char>,
     queries: Vec<char>,
 }
@@ -132,7 +132,7 @@ impl Program {
         };
 
         Ok(Self {
-            rules,
+            rule: Rule::merge(rules),
             facts,
             queries,
         })
@@ -162,6 +162,6 @@ impl Program {
 fn main() -> Result<(), ParseProgramError> {
     let args = Args::parse();
     let program = Program::parse(&args.filename)?;
-    println!("{program:?}");
+    println!("{program:#?}");
     Ok(())
 }
