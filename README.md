@@ -4,6 +4,7 @@
 
 - if no arg: stdin (with commands to clear and display rule)
 - different errors between stdin and file mode
+- implement custom display for errors
 - testing of parsing
 - simplify binary operations with same fact on both sides (e.g. `A ^ !A`)
 - dsu to optimize the bruteforce
@@ -40,7 +41,7 @@ the order of operations is:
 ## bonus
 
 - [ ] interactive fact validation
-- [ ] multiple queries and facts in same file
+- [x] multiple queries and facts in same file
 - [ ] reasoning visualization
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)

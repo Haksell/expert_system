@@ -7,6 +7,7 @@ L & M => K
 O & P => L & N
 N => M
 
-#=DEIJOP # AFKP true
+=DEIJOP # AFKP true
+?AFKP
 =DEIJP # AFP true, K ambiguous
 ?AFKP

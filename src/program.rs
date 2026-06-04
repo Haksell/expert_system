@@ -6,11 +6,11 @@ use std::{
     io::{BufRead as _, BufReader},
 };
 
-pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
+pub fn start(reader: BufReader<File>) -> Result<(), ProgramError> {
     fn parse_variables(
         line: &[char],
-        error_fn: impl Fn(char) -> ParseProgramError,
-    ) -> Result<Vec<char>, ParseProgramError> {
+        error_fn: impl Fn(char) -> ProgramError,
+    ) -> Result<Vec<char>, ProgramError> {
         let mut variables = Vec::with_capacity(line.len());
         for &c in line {
             match c {
@@ -28,28 +28,30 @@ pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
     let mut last_is_query = false;
     let mut empty_file = true;
 
-    for line in reader.lines() {
-        let line = line?
+    for (i, line) in reader.lines().enumerate() {
+        let line = line?;
+        let chars = line
             .chars()
             .filter(|c| !c.is_whitespace())
             .take_while(|&c| c != '#')
             .collect_vec();
-        if line.is_empty() {
+        if chars.is_empty() {
             continue;
         }
 
         empty_file = false;
 
-        match line[0] {
+        match chars[0] {
             '=' => {
-                facts = parse_variables(&line[1..], ParseProgramError::InvalidFact)?;
+                facts = parse_variables(&chars[1..], ProgramError::InvalidFact)?;
                 got_facts = true;
                 last_is_query = false;
             }
             '?' => {
-                let queries = parse_variables(&line[1..], ParseProgramError::InvalidQuery)?;
+                let queries = parse_variables(&chars[1..], ProgramError::InvalidQuery)?;
                 match solve(global_rule.clone(), &facts, &queries) {
                     Some(results) => {
+                        println!("={}:", facts.iter().collect::<String>());
                         for (fact, value) in results.iter().sorted() {
                             println!("{fact} is {value:?}");
                         }
@@ -60,13 +62,13 @@ pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
                 last_is_query = true;
             }
             _ => {
-                let mut new_rule = Rule::parse(&line)?;
+                let mut new_rule = Rule::parse(&chars)?;
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
                 global_rule = Rule::merge(global_rule, new_rule);
                 if !global_rule.is_satisfiable() {
-                    return Err(ParseProgramError::Contradiction);
+                    return Err(ProgramError::Contradiction(i, line));
                 }
                 last_is_query = false;
             }
@@ -74,16 +76,16 @@ pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
     }
 
     if empty_file {
-        return Err(ParseProgramError::EmptyFile);
+        return Err(ProgramError::EmptyFile);
     }
     if !got_facts {
-        return Err(ParseProgramError::MissingFacts);
+        return Err(ProgramError::MissingFacts);
     }
     if !got_queries {
-        return Err(ParseProgramError::MissingQueries);
+        return Err(ProgramError::MissingQueries);
     }
     if !last_is_query {
-        return Err(ParseProgramError::UnusedFactsOrRules);
+        return Err(ProgramError::UnusedFactsOrRules);
     }
 
     Ok(())
@@ -110,9 +112,9 @@ pub fn solve(mut rule: Rule, facts: &[char], queries: &[char]) -> Option<HashMap
     Some(results)
 }
 
-// TODO: cleaner error messages through custom impl Debug
+// TODO: cleaner error messages through custom impl Display
 #[derive(Debug)]
-pub enum ParseProgramError {
+pub enum ProgramError {
     IoError(#[expect(unused)] std::io::Error),
     InvalidToken(#[expect(unused)] String, #[expect(unused)] String), // line, token
     InvalidFact(#[expect(unused)] char),
@@ -126,10 +128,10 @@ pub enum ParseProgramError {
     InvalidExpression,
     EmptyFile,
     UnusedFactsOrRules,
-    Contradiction,
+    Contradiction(#[expect(unused)] usize, #[expect(unused)] String),
 }
 
-impl From<std::io::Error> for ParseProgramError {
+impl From<std::io::Error> for ProgramError {
     fn from(value: std::io::Error) -> Self {
         Self::IoError(value)
     }

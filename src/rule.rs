@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::ParseProgramError;
+use crate::ProgramError;
 use itertools::Itertools as _;
 
 // TODO: don't implement Clone
@@ -15,14 +15,14 @@ pub enum Rule {
 }
 
 impl Rule {
-    pub fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
+    pub fn parse(line: &[char]) -> Result<Self, ProgramError> {
         let tokens = Self::tokenize(line)?;
         Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         Self::build(tokens)
     }
 
-    fn tokenize(line: &[char]) -> Result<Vec<Token>, ParseProgramError> {
+    fn tokenize(line: &[char]) -> Result<Vec<Token>, ProgramError> {
         let mut tokens = Vec::new();
         let mut current_token = String::new();
         for &c in line {
@@ -42,7 +42,7 @@ impl Rule {
                         }
                     }
                     _ => {
-                        return Err(ParseProgramError::InvalidToken(
+                        return Err(ProgramError::InvalidToken(
                             line.iter().collect(),
                             c.to_string(),
                         ));
@@ -60,7 +60,7 @@ impl Rule {
                         current_token.clear();
                     }
                     _ => {
-                        return Err(ParseProgramError::InvalidToken(
+                        return Err(ProgramError::InvalidToken(
                             line.iter().collect(),
                             current_token,
                         ));
@@ -70,7 +70,7 @@ impl Rule {
         }
 
         if !current_token.is_empty() {
-            return Err(ParseProgramError::InvalidToken(
+            return Err(ProgramError::InvalidToken(
                 line.iter().collect(),
                 current_token,
             ));
@@ -79,7 +79,7 @@ impl Rule {
         Ok(tokens)
     }
 
-    fn check(tokens: &[Token]) -> Result<(), ParseProgramError> {
+    fn check(tokens: &[Token]) -> Result<(), ProgramError> {
         let mut cnt_open = 0;
         let mut found_implication = false;
 
@@ -88,16 +88,16 @@ impl Rule {
                 Token::LeftParenthesis => cnt_open += 1,
                 Token::RightParenthesis => {
                     if cnt_open == 0 {
-                        return Err(ParseProgramError::UnbalancedParentheses);
+                        return Err(ProgramError::UnbalancedParentheses);
                     }
                     cnt_open -= 1;
                 }
                 Token::Implication | Token::ConverseImplication | Token::Equivalence => {
                     if found_implication {
-                        return Err(ParseProgramError::MultipleImplications);
+                        return Err(ProgramError::MultipleImplications);
                     }
                     if cnt_open != 0 {
-                        return Err(ParseProgramError::ParenthesesAroundImplication);
+                        return Err(ProgramError::ParenthesesAroundImplication);
                     }
                     found_implication = true;
                 }
@@ -106,10 +106,10 @@ impl Rule {
         }
 
         if !found_implication {
-            return Err(ParseProgramError::MissingImplication);
+            return Err(ProgramError::MissingImplication);
         }
         if cnt_open != 0 {
-            return Err(ParseProgramError::UnbalancedParentheses);
+            return Err(ProgramError::UnbalancedParentheses);
         }
 
         Ok(())
@@ -159,7 +159,7 @@ impl Rule {
         output
     }
 
-    fn build(tokens: Vec<Token>) -> Result<Self, ParseProgramError> {
+    fn build(tokens: Vec<Token>) -> Result<Self, ProgramError> {
         let mut rules = Vec::new();
 
         for token in tokens {
@@ -169,7 +169,7 @@ impl Rule {
                     if let Some(rule) = rules.pop() {
                         rules.push(Self::Not(Box::new(rule)));
                     } else {
-                        return Err(ParseProgramError::InvalidExpression);
+                        return Err(ProgramError::InvalidExpression);
                     }
                 }
                 Token::Equivalence
@@ -181,7 +181,7 @@ impl Rule {
                     if let (Some(rule2), Some(rule1)) = (rules.pop(), rules.pop()) {
                         rules.push(Self::from_binary_token(token, rule1, rule2));
                     } else {
-                        return Err(ParseProgramError::InvalidExpression);
+                        return Err(ProgramError::InvalidExpression);
                     }
                 }
                 Token::LeftParenthesis | Token::RightParenthesis => unreachable!(),
@@ -189,7 +189,7 @@ impl Rule {
         }
 
         if rules.len() != 1 {
-            return Err(ParseProgramError::InvalidExpression);
+            return Err(ProgramError::InvalidExpression);
         }
 
         Ok(rules.pop().unwrap())

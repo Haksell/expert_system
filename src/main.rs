@@ -1,7 +1,7 @@
 mod program;
 mod rule;
 
-use crate::program::{ParseProgramError, start};
+use crate::program::{ProgramError, start};
 use clap::Parser;
 use std::{fs::File, io::BufReader, path::PathBuf};
 
@@ -17,7 +17,7 @@ struct Args {
     filename: PathBuf,
 }
 
-fn main() -> Result<(), ParseProgramError> {
+fn main() -> Result<(), ProgramError> {
     let args = Args::parse();
     let file = File::open(args.filename)?;
     let reader = BufReader::new(file);
