@@ -169,7 +169,7 @@ impl Rule {
                     if let Some(rule) = rules.pop() {
                         rules.push(Self::Not(Box::new(rule)));
                     } else {
-                        return Err(ParseProgramError::BuildFailed);
+                        return Err(ParseProgramError::InvalidExpression);
                     }
                 }
                 Token::Equivalence
@@ -181,7 +181,7 @@ impl Rule {
                     if let (Some(rule2), Some(rule1)) = (rules.pop(), rules.pop()) {
                         rules.push(Self::from_binary_token(token, rule1, rule2));
                     } else {
-                        return Err(ParseProgramError::BuildFailed);
+                        return Err(ParseProgramError::InvalidExpression);
                     }
                 }
                 Token::LeftParenthesis | Token::RightParenthesis => unreachable!(),
@@ -189,7 +189,7 @@ impl Rule {
         }
 
         if rules.len() != 1 {
-            return Err(ParseProgramError::BuildFailed);
+            return Err(ParseProgramError::InvalidExpression);
         }
 
         Ok(rules.pop().unwrap())
@@ -213,7 +213,7 @@ impl Rule {
     }
 
     // TODO: try in one pass
-    fn apply_de_morgan(&mut self) -> bool {
+    pub fn apply_de_morgan(&mut self) -> bool {
         match self {
             Self::Bool(_) | Self::Fact(_) => false,
             // TODO: remove .clone()
@@ -254,7 +254,7 @@ impl Rule {
         }
     }
 
-    fn remove_xor_not_not(&mut self) {
+    pub fn remove_xor_not_not(&mut self) {
         match self {
             Self::Bool(_) | Self::Fact(_) => {}
             Self::Not(child) => {
@@ -276,7 +276,7 @@ impl Rule {
         }
     }
 
-    fn remove_double_negation(&mut self) {
+    pub fn remove_double_negation(&mut self) {
         match self {
             Self::Bool(_) | Self::Fact(_) => {}
             // TODO: remove .clone()
@@ -295,27 +295,14 @@ impl Rule {
         }
     }
 
-    pub fn merge(rules: Vec<Self>) -> Self {
-        fn helper(rules: &mut [Option<Rule>], lo: usize, hi: usize) -> Rule {
-            if lo == hi - 1 {
-                rules[lo].take().unwrap()
-            } else {
-                let mi = usize::midpoint(lo, hi);
-                Rule::And(
-                    Box::new(helper(rules, lo, mi)),
-                    Box::new(helper(rules, mi, hi)),
-                )
-            }
+    pub fn merge(rule1: Self, rule2: Self) -> Self {
+        if rule1.is_tautology() {
+            rule2
+        } else if rule2.is_tautology() {
+            rule1
+        } else {
+            Self::And(Box::new(rule1), Box::new(rule2))
         }
-
-        // TODO: without option
-        let mut rules = rules.into_iter().map(Some).collect_vec();
-        let rules_count = rules.len();
-        let mut rule = helper(&mut rules, 0, rules_count);
-        while rule.apply_de_morgan() {}
-        rule.remove_xor_not_not();
-        rule.remove_double_negation();
-        rule
     }
 
     pub fn set_facts(&mut self, facts: &[char]) {
@@ -449,6 +436,14 @@ impl Rule {
         let mut variables = self.get_variables();
         variables.retain(|v| *v != fact);
         self.is_satisfiable_with_facts(&variables, 0, &mut HashMap::from([(fact, value)]))
+    }
+
+    pub const fn tautology() -> Self {
+        Self::Bool(true)
+    }
+
+    const fn is_tautology(&self) -> bool {
+        matches!(self, Self::Bool(true))
     }
 }
 

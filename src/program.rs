@@ -6,111 +6,105 @@ use std::{
     io::{BufRead as _, BufReader},
 };
 
-#[derive(Debug)]
-pub struct Program {
-    rule: Rule,
-    facts: Vec<char>,
-    queries: Vec<char>,
+pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
+    fn parse_variables(
+        line: &[char],
+        error_fn: impl Fn(char) -> ParseProgramError,
+    ) -> Result<Vec<char>, ParseProgramError> {
+        let mut variables = Vec::with_capacity(line.len());
+        for &c in line {
+            match c {
+                'A'..='Z' => variables.push(c),
+                _ => return Err(error_fn(c)),
+            }
+        }
+        Ok(variables)
+    }
+
+    let mut global_rule = Rule::tautology();
+    let mut facts = Vec::new();
+    let mut got_facts = false;
+    let mut got_queries = false;
+    let mut last_is_query = false;
+    let mut empty_file = true;
+
+    for line in reader.lines() {
+        let line = line?
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .take_while(|&c| c != '#')
+            .collect_vec();
+        if line.is_empty() {
+            continue;
+        }
+
+        empty_file = false;
+
+        match line[0] {
+            '=' => {
+                facts = parse_variables(&line[1..], ParseProgramError::InvalidFact)?;
+                got_facts = true;
+                last_is_query = false;
+            }
+            '?' => {
+                let queries = parse_variables(&line[1..], ParseProgramError::InvalidQuery)?;
+                match solve(global_rule.clone(), &facts, &queries) {
+                    Some(results) => {
+                        for (fact, value) in results.iter().sorted() {
+                            println!("{fact} is {value:?}");
+                        }
+                    }
+                    None => println!("There is a contradiction in the rules."),
+                }
+                got_queries = true;
+                last_is_query = true;
+            }
+            _ => {
+                let mut new_rule = Rule::parse(&line)?;
+                while new_rule.apply_de_morgan() {}
+                new_rule.remove_xor_not_not();
+                new_rule.remove_double_negation();
+                global_rule = Rule::merge(global_rule, new_rule);
+                last_is_query = false;
+            }
+        }
+    }
+
+    if empty_file {
+        return Err(ParseProgramError::EmptyFile);
+    }
+    if !got_facts {
+        return Err(ParseProgramError::MissingFacts);
+    }
+    if !got_queries {
+        return Err(ParseProgramError::MissingQueries);
+    }
+    if !last_is_query {
+        return Err(ParseProgramError::UnusedFactsOrRules);
+    }
+
+    Ok(())
 }
 
-impl Program {
-    pub fn parse(reader: BufReader<File>) -> Result<Self, ParseProgramError> {
-        fn parse_variables(
-            variables_to_fill: &mut Option<Vec<char>>,
-            line: &[char],
-            invalid_fn: impl Fn(char) -> ParseProgramError,
-            duplicate_fn: ParseProgramError,
-        ) -> Result<(), ParseProgramError> {
-            if variables_to_fill.is_some() {
-                return Err(duplicate_fn);
-            }
-            let mut variables = Vec::with_capacity(line.len());
-            for &c in line {
-                match c {
-                    'A'..='Z' => variables.push(c),
-                    _ => return Err(invalid_fn(c)),
-                }
-            }
-            variables_to_fill.replace(variables);
-            Ok(())
-        }
-
-        let mut rules = Vec::new();
-        let mut facts = None;
-        let mut queries = None;
-
-        for line in reader.lines() {
-            let line = line?
-                .chars()
-                .filter(|c| !c.is_whitespace())
-                .take_while(|&c| c != '#')
-                .collect_vec();
-            if line.is_empty() {
-                continue;
-            }
-            match line[0] {
-                '=' => parse_variables(
-                    &mut facts,
-                    &line[1..],
-                    ParseProgramError::InvalidFact,
-                    ParseProgramError::DuplicateFacts,
-                )?,
-                '?' => {
-                    if facts.is_none() {
-                        return Err(ParseProgramError::QueriesBeforeFacts);
-                    }
-                    parse_variables(
-                        &mut queries,
-                        &line[1..],
-                        ParseProgramError::InvalidQuery,
-                        ParseProgramError::DuplicateQueries,
-                    )?;
-                }
-                _ => {
-                    if facts.is_some() {
-                        return Err(ParseProgramError::RulesAfterFacts);
-                    }
-                    rules.push(Rule::parse(&line)?);
-                }
-            }
-        }
-
-        let Some(facts) = facts else {
-            return Err(ParseProgramError::MissingFacts);
-        };
-        let Some(queries) = queries else {
-            return Err(ParseProgramError::MissingQueries);
-        };
-
-        Ok(Self {
-            rule: Rule::merge(rules),
-            facts,
-            queries,
-        })
+pub fn solve(mut rule: Rule, facts: &[char], queries: &[char]) -> Option<HashMap<char, Troolean>> {
+    rule.set_facts(facts);
+    if !rule.is_satisfiable() {
+        return None;
     }
 
-    pub fn solve(&mut self) -> Option<HashMap<char, Troolean>> {
-        self.rule.set_facts(&self.facts);
-        if !self.rule.is_satisfiable() {
-            return None;
-        }
-
-        let mut results = HashMap::new();
-        for &query in &self.queries {
-            let result = if self.facts.contains(&query)
-                || !self.rule.is_satisfiable_with_fact(query, false)
-            {
-                Troolean::True
-            } else if !self.rule.is_satisfiable_with_fact(query, true) {
-                Troolean::False
-            } else {
-                Troolean::Ambiguous
-            };
-            results.insert(query, result);
-        }
-
-        Some(results)
+    let mut results = HashMap::new();
+    for &query in queries {
+        let result = if facts.contains(&query) || !rule.is_satisfiable_with_fact(query, false) {
+            Troolean::True
+        } else if !rule.is_satisfiable_with_fact(query, true) {
+            Troolean::False
+        } else {
+            Troolean::Ambiguous
+        };
+        results.insert(query, result);
     }
+
+    Some(results)
 }
 
 // TODO: cleaner error messages through custom impl Debug
@@ -122,15 +116,13 @@ pub enum ParseProgramError {
     InvalidQuery(#[expect(unused)] char),
     MissingFacts,
     MissingQueries,
-    DuplicateFacts,
-    DuplicateQueries,
-    QueriesBeforeFacts,
-    RulesAfterFacts,
     UnbalancedParentheses,
     MissingImplication,
     MultipleImplications,
-    BuildFailed,
-    ParenthesesAroundImplication, // TODO: more specific
+    ParenthesesAroundImplication,
+    InvalidExpression,
+    EmptyFile,
+    UnusedFactsOrRules,
 }
 
 impl From<std::io::Error> for ParseProgramError {
