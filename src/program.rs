@@ -54,7 +54,7 @@ impl Program {
                 continue;
             }
             match line[0] {
-                '=' => Self::parse_letters(
+                '=' => Self::parse_variables(
                     &mut facts,
                     &line[1..],
                     ParseProgramError::InvalidFact,
@@ -64,7 +64,7 @@ impl Program {
                     if facts.is_none() {
                         return Err(ParseProgramError::QueriesBeforeFacts);
                     }
-                    Self::parse_letters(
+                    Self::parse_variables(
                         &mut queries,
                         &line[1..],
                         ParseProgramError::InvalidQuery,
@@ -95,23 +95,23 @@ impl Program {
         })
     }
 
-    fn parse_letters(
-        letters_to_fill: &mut Option<Vec<char>>,
+    fn parse_variables(
+        variables_to_fill: &mut Option<Vec<char>>,
         line: &[char],
         invalid_fn: impl Fn(char) -> ParseProgramError,
         duplicate_fn: ParseProgramError,
     ) -> Result<(), ParseProgramError> {
-        if letters_to_fill.is_some() {
+        if variables_to_fill.is_some() {
             return Err(duplicate_fn);
         }
-        let mut letters = Vec::with_capacity(line.len());
+        let mut variables = Vec::with_capacity(line.len());
         for &c in line {
             match c {
-                'A'..='Z' => letters.push(c),
+                'A'..='Z' => variables.push(c),
                 _ => return Err(invalid_fn(c)),
             }
         }
-        letters_to_fill.replace(letters);
+        variables_to_fill.replace(variables);
         Ok(())
     }
 }
