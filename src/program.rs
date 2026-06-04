@@ -3,7 +3,6 @@ use itertools::Itertools as _;
 use std::{
     fs::File,
     io::{BufRead as _, BufReader},
-    path::Path,
 };
 
 // TODO: cleaner error messages through custom impl Debug
@@ -40,10 +39,7 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn parse(filename: &Path) -> Result<Self, ParseProgramError> {
-        let file = File::open(filename)?;
-        let reader = BufReader::new(file);
-
+    pub fn parse(reader: BufReader<File>) -> Result<Self, ParseProgramError> {
         let mut rules = Vec::new();
         let mut facts = None;
         let mut queries = None;

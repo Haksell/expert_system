@@ -3,7 +3,7 @@ mod rule;
 
 use crate::program::{ParseProgramError, Program};
 use clap::Parser;
-use std::path::PathBuf;
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -12,7 +12,9 @@ struct Args {
 
 fn main() -> Result<(), ParseProgramError> {
     let args = Args::parse();
-    let program = Program::parse(&args.filename)?;
+    let file = File::open(args.filename)?;
+    let reader = BufReader::new(file);
+    let program = Program::parse(reader)?;
     println!("{program:#?}");
     Ok(())
 }
