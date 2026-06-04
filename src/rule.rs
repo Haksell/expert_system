@@ -253,6 +253,28 @@ impl Rule {
         }
     }
 
+    fn remove_xor_not_not(&mut self) {
+        match self {
+            Self::Bool(_) | Self::Fact(_) => {}
+            Self::Not(child) => {
+                child.remove_xor_not_not();
+            }
+            Self::Xor(child1, child2) => {
+                child1.remove_xor_not_not();
+                child2.remove_xor_not_not();
+                if let (Self::Not(grandchild1), Self::Not(grandchild2)) =
+                    (child1.as_ref(), child2.as_ref())
+                {
+                    *self = Self::Xor(grandchild1.clone(), grandchild2.clone());
+                }
+            }
+            Self::Or(child1, child2) | Self::And(child1, child2) => {
+                child1.remove_xor_not_not();
+                child2.remove_xor_not_not();
+            }
+        }
+    }
+
     fn remove_double_negation(&mut self) {
         match self {
             Self::Bool(_) | Self::Fact(_) => {}
@@ -290,6 +312,7 @@ impl Rule {
         let rules_count = rules.len();
         let mut rule = helper(&mut rules, 0, rules_count);
         while rule.apply_de_morgan() {}
+        rule.remove_xor_not_not();
         rule.remove_double_negation();
         rule
     }
