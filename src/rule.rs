@@ -19,7 +19,6 @@ impl Rule {
         let tokens = Self::tokenize(line)?;
         Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
-        println!("{tokens:?}");
         Self::build(tokens)
     }
 
@@ -399,6 +398,7 @@ impl Rule {
         }
     }
 
+    // TODO: remove (store variables directly in Rule)
     fn get_variables(&self) -> Vec<char> {
         fn helper(tree: &Rule, variables: &mut HashSet<char>) {
             match tree {
@@ -419,25 +419,36 @@ impl Rule {
         variables.into_iter().sorted().collect_vec()
     }
 
-    pub fn is_satisfiable(&self) -> bool {
-        fn helper(rule: &Rule, variables: &[char], values: &mut HashMap<char, bool>) -> bool {
-            if values.len() == variables.len() {
-                return rule.evaluate_with_variables(values);
-            }
-            let variable = variables[values.len()];
-            values.insert(variable, false);
-            if helper(rule, variables, values) {
-                return true;
-            }
-            values.insert(variable, true);
-            if helper(rule, variables, values) {
-                return true;
-            }
-            values.remove_entry(&variable);
-            false
+    fn is_satisfiable_with_facts(
+        &self,
+        variables: &[char],
+        idx: usize,
+        facts: &mut HashMap<char, bool>,
+    ) -> bool {
+        if idx == variables.len() {
+            return self.evaluate_with_variables(facts);
         }
+        let variable = variables[idx];
+        facts.insert(variable, false);
+        if self.is_satisfiable_with_facts(variables, idx + 1, facts) {
+            return true;
+        }
+        facts.insert(variable, true);
+        if self.is_satisfiable_with_facts(variables, idx + 1, facts) {
+            return true;
+        }
+        facts.remove_entry(&variable);
+        false
+    }
 
-        helper(self, &self.get_variables(), &mut HashMap::new())
+    pub fn is_satisfiable(&self) -> bool {
+        self.is_satisfiable_with_facts(&self.get_variables(), 0, &mut HashMap::new())
+    }
+
+    pub fn is_satisfiable_with_fact(&self, fact: char, value: bool) -> bool {
+        let mut variables = self.get_variables();
+        variables.retain(|v| *v != fact);
+        self.is_satisfiable_with_facts(&variables, 0, &mut HashMap::from([(fact, value)]))
     }
 }
 

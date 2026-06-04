@@ -1,4 +1,4 @@
-use crate::rule::Rule;
+use crate::{Troolean, rule::Rule};
 use itertools::Itertools as _;
 use std::{
     collections::HashMap,
@@ -71,7 +71,6 @@ impl Program {
                         return Err(ParseProgramError::RulesAfterFacts);
                     }
                     rules.push(Rule::parse(&line)?);
-                    println!("{:?}", rules.last().unwrap());
                 }
             }
         }
@@ -90,15 +89,27 @@ impl Program {
         })
     }
 
-    pub fn solve(&mut self) -> Option<HashMap<char, bool>> {
+    pub fn solve(&mut self) -> Option<HashMap<char, Troolean>> {
         self.rule.set_facts(&self.facts);
         if !self.rule.is_satisfiable() {
             return None;
         }
-        // for query in self.
-        // TODO: if query in self.facts = true
-        println!("{:?}", self.rule);
-        Some(HashMap::new())
+
+        let mut results = HashMap::new();
+        for &query in &self.queries {
+            let result = if self.facts.contains(&query)
+                || !self.rule.is_satisfiable_with_fact(query, false)
+            {
+                Troolean::True
+            } else if !self.rule.is_satisfiable_with_fact(query, true) {
+                Troolean::False
+            } else {
+                Troolean::Ambiguous
+            };
+            results.insert(query, result);
+        }
+
+        Some(results)
     }
 }
 
