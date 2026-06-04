@@ -6,32 +6,6 @@ use std::{
     io::{BufRead as _, BufReader},
 };
 
-// TODO: cleaner error messages through custom impl Debug
-#[derive(Debug)]
-pub enum ParseProgramError {
-    IoError(#[expect(unused)] std::io::Error),
-    InvalidToken(#[expect(unused)] String, #[expect(unused)] String), // line, token
-    InvalidFact(#[expect(unused)] char),
-    InvalidQuery(#[expect(unused)] char),
-    MissingFacts,
-    MissingQueries,
-    DuplicateFacts,
-    DuplicateQueries,
-    QueriesBeforeFacts,
-    RulesAfterFacts,
-    UnbalancedParentheses,
-    MissingImplication,
-    MultipleImplications,
-    BuildFailed,
-    ParenthesesAroundImplication, // TODO: more specific
-}
-
-impl From<std::io::Error> for ParseProgramError {
-    fn from(value: std::io::Error) -> Self {
-        Self::IoError(value)
-    }
-}
-
 #[derive(Debug)]
 pub struct Program {
     rule: Rule,
@@ -121,8 +95,35 @@ impl Program {
         if !self.rule.is_satisfiable() {
             return None;
         }
+        // for query in self.
         // TODO: if query in self.facts = true
         println!("{:?}", self.rule);
         Some(HashMap::new())
+    }
+}
+
+// TODO: cleaner error messages through custom impl Debug
+#[derive(Debug)]
+pub enum ParseProgramError {
+    IoError(#[expect(unused)] std::io::Error),
+    InvalidToken(#[expect(unused)] String, #[expect(unused)] String), // line, token
+    InvalidFact(#[expect(unused)] char),
+    InvalidQuery(#[expect(unused)] char),
+    MissingFacts,
+    MissingQueries,
+    DuplicateFacts,
+    DuplicateQueries,
+    QueriesBeforeFacts,
+    RulesAfterFacts,
+    UnbalancedParentheses,
+    MissingImplication,
+    MultipleImplications,
+    BuildFailed,
+    ParenthesesAroundImplication, // TODO: more specific
+}
+
+impl From<std::io::Error> for ParseProgramError {
+    fn from(value: std::io::Error) -> Self {
+        Self::IoError(value)
     }
 }
