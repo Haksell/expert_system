@@ -30,7 +30,7 @@ in the same fact as their conclusion.
 are used in arithmetic expressions.
 
 the order of operations is:
-- [ ] `()`, `!`, `+` (or `&`), `|`, `^`, `=>`, `<=>`
+- [ ] `()`, `!`, `+`=`&`, `|`, `^`, `=>`=`<=>`=`<=`
 
 ## bonus
 
