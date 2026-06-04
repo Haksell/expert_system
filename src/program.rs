@@ -118,7 +118,9 @@ impl Program {
 
     pub fn solve(&mut self) -> HashMap<char, bool> {
         self.rule.set_facts(&self.facts);
+        let mut rez = HashMap::new();
         println!("{:?}", self.rule);
-        HashMap::new()
+
+        rez
     }
 }
