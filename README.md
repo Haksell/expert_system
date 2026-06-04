@@ -2,12 +2,11 @@
 
 ## todo
 
-- testing of parsing
-- simplify binary operations with same fact on both sides (e.g. `A ^ !A`)
-- check contradictions before facts
-- dsu to optimize the bruteforce
 - if no arg: stdin (with commands to clear and display rule)
 - different errors between stdin and file mode
+- testing of parsing
+- simplify binary operations with same fact on both sides (e.g. `A ^ !A`)
+- dsu to optimize the bruteforce
 
 ## subject
 

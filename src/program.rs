@@ -65,6 +65,9 @@ pub fn start(reader: BufReader<File>) -> Result<(), ParseProgramError> {
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
                 global_rule = Rule::merge(global_rule, new_rule);
+                if !global_rule.is_satisfiable() {
+                    return Err(ParseProgramError::Contradiction);
+                }
                 last_is_query = false;
             }
         }
@@ -123,6 +126,7 @@ pub enum ParseProgramError {
     InvalidExpression,
     EmptyFile,
     UnusedFactsOrRules,
+    Contradiction,
 }
 
 impl From<std::io::Error> for ParseProgramError {
