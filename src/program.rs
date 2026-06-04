@@ -114,4 +114,6 @@ impl Program {
             queries,
         })
     }
+
+    pub fn solve() {}
 }

@@ -4,6 +4,7 @@ use itertools::Itertools as _;
 // TODO: don't implement Clone
 #[derive(Clone, Debug)]
 pub enum Rule {
+    Bool(bool),
     Fact(char),
     Not(Box<Self>),
     And(Box<Self>, Box<Self>),
@@ -213,10 +214,10 @@ impl Rule {
     // TODO: try in one pass
     fn apply_de_morgan(&mut self) -> bool {
         match self {
-            Self::Fact(_) => false,
+            Self::Bool(_) | Self::Fact(_) => false,
             // TODO: remove .clone()
             Self::Not(child) => match *child.clone() {
-                Self::Fact(_) => false,
+                Self::Bool(_) | Self::Fact(_) => false,
                 Self::Not(_) => child.apply_de_morgan(),
                 Self::Or(grandchild1, grandchild2) => {
                     let mut left = Self::Not(grandchild1);
@@ -254,10 +255,10 @@ impl Rule {
 
     fn remove_double_negation(&mut self) {
         match self {
-            Self::Fact(_) => {}
+            Self::Bool(_) | Self::Fact(_) => {}
             // TODO: remove .clone()
             Self::Not(child) => match *child.clone() {
-                Self::Fact(_) => {}
+                Self::Bool(_) | Self::Fact(_) => {}
                 Self::Not(grandchild) => {
                     *self = *grandchild;
                     self.remove_double_negation();
