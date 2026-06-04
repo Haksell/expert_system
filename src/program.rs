@@ -1,6 +1,7 @@
 use crate::rule::Rule;
 use itertools::Itertools as _;
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead as _, BufReader},
 };
@@ -115,5 +116,9 @@ impl Program {
         })
     }
 
-    pub fn solve() {}
+    pub fn solve(&mut self) -> HashMap<char, bool> {
+        self.rule.set_facts(&self.facts);
+        println!("{:?}", self.rule);
+        HashMap::new()
+    }
 }

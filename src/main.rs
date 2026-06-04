@@ -14,7 +14,8 @@ fn main() -> Result<(), ParseProgramError> {
     let args = Args::parse();
     let file = File::open(args.filename)?;
     let reader = BufReader::new(file);
-    let program = Program::parse(reader)?;
+    let mut program = Program::parse(reader)?;
     println!("{program:#?}");
+    let results = program.solve();
     Ok(())
 }

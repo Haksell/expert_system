@@ -293,6 +293,69 @@ impl Rule {
         rule.remove_double_negation();
         rule
     }
+
+    pub fn set_facts(&mut self, facts: &[char]) {
+        for f in facts {
+            self.set_fact(*f);
+        }
+    }
+
+    // TODO: remove clones
+    fn set_fact(&mut self, c: char) {
+        match self {
+            Self::Fact(f) if *f == c => *self = Self::Bool(true),
+            Self::Bool(_) | Self::Fact(_) => {}
+            Self::Not(rule) => {
+                rule.set_fact(c);
+                if let Self::Bool(b) = rule.as_ref() {
+                    *self = Self::Bool(!b);
+                }
+            }
+            Self::And(rule1, rule2) => {
+                rule1.set_fact(c);
+                rule2.set_fact(c);
+                match (rule1.as_ref(), rule2.as_ref()) {
+                    (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 && *b2),
+                    (Self::Bool(true), child) | (child, Self::Bool(true)) => *self = child.clone(),
+                    (Self::Bool(false), _) | (_, Self::Bool(false)) => *self = Self::Bool(false),
+                    _ => {}
+                }
+            }
+            Self::Or(rule1, rule2) => {
+                rule1.set_fact(c);
+                rule2.set_fact(c);
+                match (rule1.as_ref(), rule2.as_ref()) {
+                    (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 || *b2),
+                    (Self::Bool(false), child) | (child, Self::Bool(false)) => {
+                        *self = child.clone();
+                    }
+                    (Self::Bool(true), _) | (_, Self::Bool(true)) => *self = Self::Bool(true),
+                    _ => {}
+                }
+            }
+            Self::Xor(rule1, rule2) => {
+                rule1.set_fact(c);
+                rule2.set_fact(c);
+                match (rule1.as_ref(), rule2.as_ref()) {
+                    (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 ^ *b2),
+                    (Self::Bool(true), Self::Not(child)) | (Self::Not(child), Self::Bool(true)) => {
+                        *self = *child.clone();
+                    }
+                    (Self::Bool(false), Self::Not(child))
+                    | (Self::Not(child), Self::Bool(false)) => {
+                        *self = Self::Not(child.clone());
+                    }
+                    (Self::Bool(true), child) | (child, Self::Bool(true)) => {
+                        *self = Self::Not(Box::new(child.clone()));
+                    }
+                    (Self::Bool(false), child) | (child, Self::Bool(false)) => {
+                        *self = child.clone();
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
