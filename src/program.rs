@@ -40,6 +40,26 @@ pub struct Program {
 
 impl Program {
     pub fn parse(reader: BufReader<File>) -> Result<Self, ParseProgramError> {
+        fn parse_variables(
+            variables_to_fill: &mut Option<Vec<char>>,
+            line: &[char],
+            invalid_fn: impl Fn(char) -> ParseProgramError,
+            duplicate_fn: ParseProgramError,
+        ) -> Result<(), ParseProgramError> {
+            if variables_to_fill.is_some() {
+                return Err(duplicate_fn);
+            }
+            let mut variables = Vec::with_capacity(line.len());
+            for &c in line {
+                match c {
+                    'A'..='Z' => variables.push(c),
+                    _ => return Err(invalid_fn(c)),
+                }
+            }
+            variables_to_fill.replace(variables);
+            Ok(())
+        }
+
         let mut rules = Vec::new();
         let mut facts = None;
         let mut queries = None;
@@ -54,7 +74,7 @@ impl Program {
                 continue;
             }
             match line[0] {
-                '=' => Self::parse_variables(
+                '=' => parse_variables(
                     &mut facts,
                     &line[1..],
                     ParseProgramError::InvalidFact,
@@ -64,7 +84,7 @@ impl Program {
                     if facts.is_none() {
                         return Err(ParseProgramError::QueriesBeforeFacts);
                     }
-                    Self::parse_variables(
+                    parse_variables(
                         &mut queries,
                         &line[1..],
                         ParseProgramError::InvalidQuery,
@@ -93,25 +113,5 @@ impl Program {
             facts,
             queries,
         })
-    }
-
-    fn parse_variables(
-        variables_to_fill: &mut Option<Vec<char>>,
-        line: &[char],
-        invalid_fn: impl Fn(char) -> ParseProgramError,
-        duplicate_fn: ParseProgramError,
-    ) -> Result<(), ParseProgramError> {
-        if variables_to_fill.is_some() {
-            return Err(duplicate_fn);
-        }
-        let mut variables = Vec::with_capacity(line.len());
-        for &c in line {
-            match c {
-                'A'..='Z' => variables.push(c),
-                _ => return Err(invalid_fn(c)),
-            }
-        }
-        variables_to_fill.replace(variables);
-        Ok(())
     }
 }
