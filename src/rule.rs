@@ -1,4 +1,4 @@
-use crate::{ParseProgramError, Token};
+use crate::ParseProgramError;
 use itertools::Itertools as _;
 
 // TODO: don't implement Clone
@@ -291,6 +291,35 @@ impl Rule {
         while rule.apply_de_morgan() {}
         rule.remove_double_negation();
         rule
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Token {
+    Fact(char),
+    Equivalence,
+    Implication,
+    ConverseImplication,
+    Xor,
+    Or,
+    And,
+    Not,
+    LeftParenthesis,
+    RightParenthesis,
+}
+
+impl Token {
+    fn precedence(self) -> u32 {
+        match self {
+            Self::Equivalence | Self::ConverseImplication | Self::Implication => 1,
+            Self::Xor => 2,
+            Self::Or => 3,
+            Self::And => 4,
+            Self::Not => 5,
+            Self::Fact(_) | Self::LeftParenthesis | Self::RightParenthesis => {
+                unreachable!()
+            }
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 mod rule;
 
+use crate::rule::Rule;
 use clap::Parser;
 use itertools::Itertools as _;
 use std::{
@@ -7,8 +8,6 @@ use std::{
     io::{BufRead as _, BufReader},
     path::{Path, PathBuf},
 };
-
-use crate::rule::Rule;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -38,35 +37,6 @@ enum ParseProgramError {
 impl From<std::io::Error> for ParseProgramError {
     fn from(value: std::io::Error) -> Self {
         Self::IoError(value)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Token {
-    Fact(char),
-    Equivalence,
-    Implication,
-    ConverseImplication,
-    Xor,
-    Or,
-    And,
-    Not,
-    LeftParenthesis,
-    RightParenthesis,
-}
-
-impl Token {
-    fn precedence(self) -> u32 {
-        match self {
-            Self::Equivalence | Self::ConverseImplication | Self::Implication => 1,
-            Self::Xor => 2,
-            Self::Or => 3,
-            Self::And => 4,
-            Self::Not => 5,
-            Self::Fact(_) | Self::LeftParenthesis | Self::RightParenthesis => {
-                unreachable!()
-            }
-        }
     }
 }
 
