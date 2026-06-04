@@ -116,11 +116,13 @@ impl Program {
         })
     }
 
-    pub fn solve(&mut self) -> HashMap<char, bool> {
+    pub fn solve(&mut self) -> Option<HashMap<char, bool>> {
         self.rule.set_facts(&self.facts);
-        let mut rez = HashMap::new();
+        if !self.rule.is_satisfiable() {
+            return None;
+        }
+        // TODO: if query in self.facts = true
         println!("{:?}", self.rule);
-
-        rez
+        Some(HashMap::new())
     }
 }

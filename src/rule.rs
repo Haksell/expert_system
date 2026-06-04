@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::ParseProgramError;
 use itertools::Itertools as _;
 
@@ -378,6 +380,64 @@ impl Rule {
                 }
             }
         }
+    }
+
+    fn evaluate_with_variables(&self, values: &HashMap<char, bool>) -> bool {
+        match self {
+            Self::Bool(b) => *b,
+            Self::Fact(c) => values[c],
+            Self::Not(node) => !node.evaluate_with_variables(values),
+            Self::Or(node1, node2) => {
+                node1.evaluate_with_variables(values) || node2.evaluate_with_variables(values)
+            }
+            Self::And(node1, node2) => {
+                node1.evaluate_with_variables(values) && node2.evaluate_with_variables(values)
+            }
+            Self::Xor(node1, node2) => {
+                node1.evaluate_with_variables(values) ^ node2.evaluate_with_variables(values)
+            }
+        }
+    }
+
+    fn get_variables(&self) -> Vec<char> {
+        fn helper(tree: &Rule, variables: &mut HashSet<char>) {
+            match tree {
+                Rule::Bool(_) => {}
+                Rule::Fact(c) => {
+                    variables.insert(*c);
+                }
+                Rule::Not(node) => helper(node, variables),
+                Rule::Or(node1, node2) | Rule::And(node1, node2) | Rule::Xor(node1, node2) => {
+                    helper(node1, variables);
+                    helper(node2, variables);
+                }
+            }
+        }
+
+        let mut variables = HashSet::new();
+        helper(self, &mut variables);
+        variables.into_iter().sorted().collect_vec()
+    }
+
+    pub fn is_satisfiable(&self) -> bool {
+        fn helper(rule: &Rule, variables: &[char], values: &mut HashMap<char, bool>) -> bool {
+            if values.len() == variables.len() {
+                return rule.evaluate_with_variables(values);
+            }
+            let variable = variables[values.len()];
+            values.insert(variable, false);
+            if helper(rule, variables, values) {
+                return true;
+            }
+            values.insert(variable, true);
+            if helper(rule, variables, values) {
+                return true;
+            }
+            values.remove_entry(&variable);
+            false
+        }
+
+        helper(self, &self.get_variables(), &mut HashMap::new())
     }
 }
 

@@ -16,6 +16,9 @@ fn main() -> Result<(), ParseProgramError> {
     let reader = BufReader::new(file);
     let mut program = Program::parse(reader)?;
     println!("{program:#?}");
-    let results = program.solve();
+    match program.solve() {
+        Some(results) => println!("{results:?}"),
+        None => println!("There is a contradiction in the rules."),
+    }
     Ok(())
 }
