@@ -2,8 +2,8 @@
 
 ## todo
 
-- parsing
 - testing of parsing
+- simplify binary operations with same fact on both sides (e.g. `A ^ !A`)
 
 ## subject
 

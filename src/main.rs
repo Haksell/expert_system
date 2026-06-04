@@ -31,7 +31,8 @@ enum ParseProgramError {
     UnbalancedParentheses,
     MissingImplication,
     MultipleImplications,
-    BuildFailed, // TODO: more specific
+    BuildFailed,
+    ParenthesesAroundImplication, // TODO: more specific
 }
 
 impl From<std::io::Error> for ParseProgramError {

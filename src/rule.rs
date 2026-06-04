@@ -80,7 +80,7 @@ impl Rule {
 
     fn check(tokens: &[Token]) -> Result<(), ParseProgramError> {
         let mut cnt_open = 0;
-        let mut cnt_implications = 0;
+        let mut found_implication = false;
 
         for token in tokens {
             match token {
@@ -91,26 +91,27 @@ impl Rule {
                     }
                     cnt_open -= 1;
                 }
-                _ => {
-                    cnt_implications += matches!(
-                        token,
-                        Token::Implication | Token::ConverseImplication | Token::Equivalence
-                    ) as u32;
+                Token::Implication | Token::ConverseImplication | Token::Equivalence => {
+                    if found_implication {
+                        return Err(ParseProgramError::MultipleImplications);
+                    }
+                    if cnt_open != 0 {
+                        return Err(ParseProgramError::ParenthesesAroundImplication);
+                    }
+                    found_implication = true;
                 }
+                _ => {}
             }
         }
 
-        match cnt_implications {
-            0 => return Err(ParseProgramError::MissingImplication),
-            1 => {}
-            _ => return Err(ParseProgramError::MultipleImplications),
+        if !found_implication {
+            return Err(ParseProgramError::MissingImplication);
+        }
+        if cnt_open != 0 {
+            return Err(ParseProgramError::UnbalancedParentheses);
         }
 
-        if cnt_open == 0 {
-            Ok(())
-        } else {
-            Err(ParseProgramError::UnbalancedParentheses)
-        }
+        Ok(())
     }
 
     // TODO: handle broken input (A&B|)
