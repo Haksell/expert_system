@@ -41,7 +41,7 @@ impl From<std::io::Error> for ParseProgramError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Token {
     Fact(char),
     Equivalence,
@@ -56,16 +56,14 @@ enum Token {
 }
 
 impl Token {
-    fn precedence(&self) -> u32 {
+    fn precedence(self) -> u32 {
         match self {
-            Token::Equivalence => 1,
-            Token::ConverseImplication => 1,
-            Token::Implication => 1,
-            Token::Xor => 2,
-            Token::Or => 3,
-            Token::And => 4,
-            Token::Not => 5,
-            Token::Fact(_) | Token::LeftParenthesis | Token::RightParenthesis => {
+            Self::Equivalence | Self::ConverseImplication | Self::Implication => 1,
+            Self::Xor => 2,
+            Self::Or => 3,
+            Self::And => 4,
+            Self::Not => 5,
+            Self::Fact(_) | Self::LeftParenthesis | Self::RightParenthesis => {
                 unreachable!()
             }
         }

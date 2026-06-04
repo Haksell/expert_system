@@ -1,0 +1,8 @@
+# checks de morgan is applied before remove_double_negation
+# otherwise, unerachable!() code would be reached
+
+!!(A & B) => C
+!!!(D & E) => C
+
+=AD
+?C

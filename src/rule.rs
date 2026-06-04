@@ -5,16 +5,15 @@ use itertools::Itertools as _;
 #[derive(Clone, Debug)]
 pub enum Rule {
     Fact(char),
-    Not(Box<Rule>),
-    And(Box<Rule>, Box<Rule>),
-    Or(Box<Rule>, Box<Rule>),
-    Xor(Box<Rule>, Box<Rule>),
+    Not(Box<Self>),
+    And(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
+    Xor(Box<Self>, Box<Self>),
 }
 
 impl Rule {
     pub fn parse(line: &[char]) -> Result<Self, ParseProgramError> {
         let tokens = Self::tokenize(line)?;
-        assert!(!tokens.is_empty()); // TODO: remove
         Self::check(&tokens)?;
         let tokens = Self::infix_to_rpn(tokens);
         println!("{tokens:?}");
@@ -100,7 +99,7 @@ impl Rule {
                     }
                     found_implication = true;
                 }
-                _ => {}
+                Token::Fact(_) | Token::Xor | Token::Or | Token::And | Token::Not => {}
             }
         }
 
@@ -129,7 +128,7 @@ impl Rule {
                     }
                     operators.pop();
                     // TODO: remove?
-                    if let Some(Token::Not) = operators.last() {
+                    if operators.last() == Some(&Token::Not) {
                         output.push(operators.pop().unwrap());
                     }
                 }
@@ -163,10 +162,10 @@ impl Rule {
 
         for token in tokens {
             match token {
-                Token::Fact(c) => rules.push(Rule::Fact(c)),
+                Token::Fact(c) => rules.push(Self::Fact(c)),
                 Token::Not => {
                     if let Some(rule) = rules.pop() {
-                        rules.push(Rule::Not(Box::new(rule)));
+                        rules.push(Self::Not(Box::new(rule)));
                     } else {
                         return Err(ParseProgramError::BuildFailed);
                     }
@@ -178,7 +177,7 @@ impl Rule {
                 | Token::Or
                 | Token::And => {
                     if let (Some(rule2), Some(rule1)) = (rules.pop(), rules.pop()) {
-                        rules.push(Rule::from_binary_token(token, rule1, rule2));
+                        rules.push(Self::from_binary_token(token, rule1, rule2));
                     } else {
                         return Err(ParseProgramError::BuildFailed);
                     }
@@ -194,57 +193,57 @@ impl Rule {
         Ok(rules.pop().unwrap())
     }
 
-    fn from_binary_token(token: Token, rule1: Rule, rule2: Rule) -> Rule {
+    fn from_binary_token(token: Token, rule1: Self, rule2: Self) -> Self {
         let rule1 = Box::new(rule1);
         let rule2 = Box::new(rule2);
 
         match token {
-            Token::Equivalence => Rule::Not(Box::new(Rule::Xor(rule1, rule2))),
-            Token::Implication => Rule::Or(Box::new(Rule::Not(rule1)), rule2),
-            Token::ConverseImplication => Rule::Or(rule1, Box::new(Rule::Not(rule2))),
-            Token::Xor => Rule::Xor(rule1, rule2),
-            Token::Or => Rule::Or(rule1, rule2),
-            Token::And => Rule::And(rule1, rule2),
+            Token::Equivalence => Self::Not(Box::new(Self::Xor(rule1, rule2))),
+            Token::Implication => Self::Or(Box::new(Self::Not(rule1)), rule2),
+            Token::ConverseImplication => Self::Or(rule1, Box::new(Self::Not(rule2))),
+            Token::Xor => Self::Xor(rule1, rule2),
+            Token::Or => Self::Or(rule1, rule2),
+            Token::And => Self::And(rule1, rule2),
             Token::Fact(_) | Token::Not | Token::LeftParenthesis | Token::RightParenthesis => {
                 unreachable!()
             }
         }
     }
 
-    // TODO: without .clone()
     // TODO: try in one pass
     fn apply_de_morgan(&mut self) -> bool {
         match self {
-            Rule::Fact(_) => false,
-            Rule::Not(child) => match *child.clone() {
-                Rule::Fact(_) => false,
-                Rule::Not(_) => child.apply_de_morgan(),
-                Rule::Or(grandchild1, grandchild2) => {
-                    let mut left = Rule::Not(grandchild1);
-                    let mut right = Rule::Not(grandchild2);
+            Self::Fact(_) => false,
+            // TODO: remove .clone()
+            Self::Not(child) => match *child.clone() {
+                Self::Fact(_) => false,
+                Self::Not(_) => child.apply_de_morgan(),
+                Self::Or(grandchild1, grandchild2) => {
+                    let mut left = Self::Not(grandchild1);
+                    let mut right = Self::Not(grandchild2);
                     left.apply_de_morgan();
                     right.apply_de_morgan();
-                    *self = Rule::And(Box::new(left), Box::new(right));
+                    *self = Self::And(Box::new(left), Box::new(right));
                     true
                 }
-                Rule::And(grandchild1, grandchild2) => {
-                    let mut left = Rule::Not(grandchild1);
-                    let mut right = Rule::Not(grandchild2);
+                Self::And(grandchild1, grandchild2) => {
+                    let mut left = Self::Not(grandchild1);
+                    let mut right = Self::Not(grandchild2);
                     left.apply_de_morgan();
                     right.apply_de_morgan();
-                    *self = Rule::Or(Box::new(left), Box::new(right));
+                    *self = Self::Or(Box::new(left), Box::new(right));
                     true
                 }
-                Rule::Xor(grandchild1, grandchild2) => {
-                    let mut left = Rule::Not(grandchild1);
+                Self::Xor(grandchild1, grandchild2) => {
+                    let mut left = Self::Not(grandchild1);
                     let mut right = grandchild2;
                     left.apply_de_morgan();
                     right.apply_de_morgan();
-                    *self = Rule::Xor(Box::new(left), right);
+                    *self = Self::Xor(Box::new(left), right);
                     true
                 }
             },
-            Rule::Or(child1, child2) | Rule::And(child1, child2) | Rule::Xor(child1, child2) => {
+            Self::Or(child1, child2) | Self::And(child1, child2) | Self::Xor(child1, child2) => {
                 // store in variables to avoid short-circuiting
                 let b1 = child1.apply_de_morgan();
                 let b2 = child2.apply_de_morgan();
@@ -253,26 +252,26 @@ impl Rule {
         }
     }
 
-    // TODO: without .clone()
     fn remove_double_negation(&mut self) {
         match self {
-            Rule::Fact(_) => {}
-            Rule::Not(child) => match *child.clone() {
-                Rule::Fact(_) => {}
-                Rule::Not(grandchild) => {
-                    *self = *grandchild.clone();
+            Self::Fact(_) => {}
+            // TODO: remove .clone()
+            Self::Not(child) => match *child.clone() {
+                Self::Fact(_) => {}
+                Self::Not(grandchild) => {
+                    *self = *grandchild;
                     self.remove_double_negation();
                 }
-                _ => unreachable!(),
+                Self::And(..) | Self::Or(..) | Self::Xor(..) => unreachable!(),
             },
-            Rule::Or(child1, child2) | Rule::And(child1, child2) | Rule::Xor(child1, child2) => {
+            Self::Or(child1, child2) | Self::And(child1, child2) | Self::Xor(child1, child2) => {
                 child1.remove_double_negation();
                 child2.remove_double_negation();
             }
         }
     }
 
-    pub fn merge(rules: Vec<Rule>) -> Rule {
+    pub fn merge(rules: Vec<Self>) -> Self {
         fn helper(rules: &mut [Option<Rule>], lo: usize, hi: usize) -> Rule {
             if lo == hi - 1 {
                 rules[lo].take().unwrap()
