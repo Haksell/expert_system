@@ -13,7 +13,7 @@ use std::{
 };
 
 #[expect(clippy::struct_excessive_bools)]
-struct Program {
+struct State {
     global_rule: Rule,
     facts: Vec<char>,
     got_facts: bool,
@@ -30,14 +30,14 @@ pub enum ExecMode {
 }
 
 pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
-    let mut program = Program::new();
+    let mut state = State::new();
 
     match &mode {
         ExecMode::OnlyFile(filename) | ExecMode::InteractiveWithFile(filename) => {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
             for (line_number, line) in reader.lines().enumerate() {
-                program.update(line_number, &line?)?;
+                state.update(line_number, &line?)?;
             }
         }
         ExecMode::InteractiveWithoutFile => {}
@@ -55,7 +55,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
                 let input = rl.readline(">> ");
                 match input {
                     Ok(line) => {
-                        if let Err(err) = program.update(line_number, &line) {
+                        if let Err(err) = state.update(line_number, &line) {
                             match err.interactive_handling() {
                                 InteractiveHandling::Error => return Err(err),
                                 InteractiveHandling::Warning => println!("Warning: {err:?}"),
@@ -77,20 +77,20 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
         ExecMode::OnlyFile(_) => {}
     }
 
-    if program.empty_file {
+    if state.empty_file {
         return Err(ExpertSystemError::EmptyFile);
     }
-    if !program.got_queries {
+    if !state.got_queries {
         return Err(ExpertSystemError::MissingQueries);
     }
-    if !program.last_is_query {
+    if !state.last_is_query {
         return Err(ExpertSystemError::UnusedFactsOrRules);
     }
 
     Ok(())
 }
 
-impl Program {
+impl State {
     const fn new() -> Self {
         Self {
             global_rule: Rule::tautology(),
