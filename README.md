@@ -22,22 +22,20 @@ parsing:
 - [x] if there is a syntax error in the input, the program must notify the user of the issue
 - [x] if there is a contradiction in the input, the program must notify the user of the issue
 
-the engine must support the following features:
+operations:
 - [x] AND conditions. e.g. "If A and B and [...] then X".
 - [x] OR conditions. e.g. "If C or D then Z".
 - [x] XOR conditions. e.g. "If A xor E then V".
 - [x] negation. e.g. "If A and not B then Y".
 - [x] multiple rules with the same conclusion.
 - [x] AND in conclusions. e.g. "If A then B and C".
-- [x] parentheses in expressions. these should be interpreted similarly to how they
-are used in arithmetic expressions.
+- [x] parentheses in expressions.
+- [x] the order of operations is: `()`, `!`, `+`=`&`, `|`, `^`, `=>`=`<=>`=`<=`
 
-you must implement a backward-chaining inference engine:
+engine:
+- [x] you must implement a backward-chaining inference engine
 - [x] for each query, the program must determine whether the query is true, false or undetermined
 - [x] a fact can only be undetermined if the ruleset is ambiguous (e.g. "A is true, and if A then B or C", then B and C are undetermined)
-
-the order of operations is:
-- [x] `()`, `!`, `+`=`&`, `|`, `^`, `=>`=`<=>`=`<=`
 
 ## bonus
 
