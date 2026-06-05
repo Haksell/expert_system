@@ -33,8 +33,8 @@ fn main() {
             std::process::exit(2);
         }
         (None, true) => exec(&ExecMode::InteractiveWithoutFile),
-        (Some(filename), true) => exec(&ExecMode::OnlyFile(filename)),
-        (Some(filename), false) => exec(&ExecMode::InteractiveWithFile(filename)),
+        (Some(filename), false) => exec(&ExecMode::OnlyFile(filename)),
+        (Some(filename), true) => exec(&ExecMode::InteractiveWithFile(filename)),
     };
     if let Err(err) = exec_result {
         eprintln!("Error: {err}");
