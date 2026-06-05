@@ -2,14 +2,16 @@
 
 ## todo
 
-- retarded no ambiguity of subject
-- or and xor ambiguous in not mode ambiguous
+ambiguous flag:
+- add back
+- can only be undetermined if or/xor in conclusion
+- otherwise like before
+
+more tests:
 - testing of update
-- tests with ambiguity in mandatory subject mode
 - better test with xor
 - testing with false
 - testing of parsing
-- dsu to optimize the bruteforce
 
 ## subject
 
