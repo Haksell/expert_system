@@ -43,7 +43,7 @@ struct Args {
     #[arg(short, long)]
     interactive: bool,
     /// Select an inference engine.
-    #[arg(short, long, value_enum, default_value_t = InferenceEngine::BackwardChaining)]
+    #[arg(short, long, value_enum, default_value_t = InferenceEngine::SatSolver)]
     engine: InferenceEngine,
 }
 
