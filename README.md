@@ -2,7 +2,6 @@
 
 ## todo
 
-- implement custom display for errors
 - testing of update
 - testing of parsing
 - dsu to optimize the bruteforce

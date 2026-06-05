@@ -1,25 +1,80 @@
-// TODO: cleaner error messages through custom impl Display
+pub type LineInfo = Option<(usize, String)>;
+
+pub fn line_info(line_number: Option<usize>, line: &str) -> LineInfo {
+    line_number.map(|ln| (ln, line.to_owned()))
+}
+
+fn display_line(line_info: &LineInfo) -> String {
+    match line_info {
+        Some((line_number, line)) => format!(" at line {line_number}:\n`{line}`"),
+        None => String::new(),
+    }
+}
+
 #[derive(Debug)]
 pub enum ExpertSystemError {
-    IoError(#[expect(unused)] std::io::Error),
-    InvalidToken(#[expect(unused)] String, #[expect(unused)] String), // line, token
-    InvalidFact(#[expect(unused)] char),
-    InvalidQuery(#[expect(unused)] char),
+    IoError(std::io::Error),
+    ReadlineError(rustyline::error::ReadlineError),
+    InvalidToken(LineInfo, String),
+    InvalidFact(LineInfo, char),
+    InvalidQuery(LineInfo, char),
+    UnbalancedParentheses(LineInfo),
+    MissingImplication(LineInfo),
+    MultipleImplications(LineInfo),
+    ParenthesesAroundImplication(LineInfo),
+    InvalidExpression(LineInfo),
+    Contradiction(LineInfo),
     MissingQueries,
-    UnbalancedParentheses,
-    MissingImplication,
-    MultipleImplications,
-    ParenthesesAroundImplication,
-    InvalidExpression,
     EmptyFile,
     UnusedFactsOrRules,
-    Contradiction(#[expect(unused)] usize, #[expect(unused)] String),
-    ReadlineError(#[expect(unused)] rustyline::error::ReadlineError),
 }
 
 impl From<std::io::Error> for ExpertSystemError {
     fn from(value: std::io::Error) -> Self {
         Self::IoError(value)
+    }
+}
+
+impl std::fmt::Display for ExpertSystemError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IoError(err) => write!(f, "I/O error: {err}"),
+            Self::ReadlineError(err) => write!(f, "I/O error: {err}"),
+            Self::MissingQueries => write!(f, "no queries found in file"),
+            Self::EmptyFile => write!(f, "file is empty"),
+            Self::UnusedFactsOrRules => write!(f, "unused facts or rules"),
+            Self::InvalidToken(line_info, token) => {
+                write!(f, "invalid token: `{token}`{}", display_line(line_info))
+            }
+            Self::InvalidFact(line_info, fact) => {
+                write!(f, "invalid fact: `{fact}`{}", display_line(line_info))
+            }
+            Self::InvalidQuery(line_info, query) => {
+                write!(f, "invalid query: `{query}`{}", display_line(line_info))
+            }
+            Self::UnbalancedParentheses(line_info) => {
+                write!(f, "unbalanced parentheses{}", display_line(line_info))
+            }
+            Self::MissingImplication(line_info) => {
+                write!(f, "missing implication{}", display_line(line_info))
+            }
+            Self::MultipleImplications(line_info) => {
+                write!(f, "multiple implications{}", display_line(line_info))
+            }
+            Self::ParenthesesAroundImplication(line_info) => {
+                write!(
+                    f,
+                    "parentheses around implication{}",
+                    display_line(line_info)
+                )
+            }
+            Self::InvalidExpression(line_info) => {
+                write!(f, "invalid expression{}", display_line(line_info))
+            }
+            Self::Contradiction(line_info) => {
+                write!(f, "contradiction{}", display_line(line_info))
+            }
+        }
     }
 }
 
@@ -36,14 +91,14 @@ impl ExpertSystemError {
                 InteractiveHandling::Acceptable
             }
             Self::InvalidToken(_, _)
-            | Self::InvalidFact(_)
-            | Self::InvalidQuery(_)
-            | Self::UnbalancedParentheses
-            | Self::MissingImplication
-            | Self::MultipleImplications
-            | Self::ParenthesesAroundImplication
-            | Self::InvalidExpression
-            | Self::Contradiction(_, _) => InteractiveHandling::Warning,
+            | Self::InvalidFact(_, _)
+            | Self::InvalidQuery(_, _)
+            | Self::UnbalancedParentheses(_)
+            | Self::MissingImplication(_)
+            | Self::MultipleImplications(_)
+            | Self::ParenthesesAroundImplication(_)
+            | Self::InvalidExpression(_)
+            | Self::Contradiction(_) => InteractiveHandling::Warning,
             Self::IoError(_) | Self::ReadlineError(_) => InteractiveHandling::Error,
         }
     }

@@ -1,6 +1,6 @@
 use crate::{
     Troolean,
-    error::{ExpertSystemError, InteractiveHandling},
+    error::{ExpertSystemError, InteractiveHandling, LineInfo, line_info},
     rule::Rule,
 };
 use itertools::Itertools as _;
@@ -37,7 +37,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
             for (line_number, line) in reader.lines().enumerate() {
-                state.update(line_number, &line?)?;
+                state.update(Some(line_number), &line?)?;
             }
         }
         ExecMode::InteractiveWithoutFile => {}
@@ -51,14 +51,14 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
                     return Err(ExpertSystemError::ReadlineError(readline_error));
                 }
             };
-            for line_number in 0.. {
+            loop {
                 let input = rl.readline(">> ");
                 match input {
                     Ok(line) => {
-                        if let Err(err) = state.update(line_number, &line) {
+                        if let Err(err) = state.update(None, &line) {
                             match err.interactive_handling() {
                                 InteractiveHandling::Error => return Err(err),
-                                InteractiveHandling::Warning => println!("Warning: {err:?}"),
+                                InteractiveHandling::Warning => println!("Warning: {err}"),
                                 InteractiveHandling::Acceptable => {}
                             }
                         }
@@ -102,16 +102,18 @@ impl State {
         }
     }
 
-    fn update(&mut self, line_number: usize, line: &str) -> Result<(), ExpertSystemError> {
+    fn update(&mut self, line_number: Option<usize>, line: &str) -> Result<(), ExpertSystemError> {
         fn parse_variables(
-            line: &[char],
-            error_fn: impl Fn(char) -> ExpertSystemError,
+            chars: &[char],
+            error_fn: impl Fn(LineInfo, char) -> ExpertSystemError,
+            line_number: Option<usize>,
+            line: &str,
         ) -> Result<Vec<char>, ExpertSystemError> {
-            let mut variables = Vec::with_capacity(line.len());
-            for &c in line {
+            let mut variables = Vec::with_capacity(chars.len());
+            for &c in chars {
                 match c {
                     'A'..='Z' => variables.push(c),
-                    _ => return Err(error_fn(c)),
+                    _ => return Err(error_fn(line_info(line_number, line), c)),
                 }
             }
             Ok(variables)
@@ -130,20 +132,30 @@ impl State {
 
         match chars[0] {
             '=' => {
-                self.facts = parse_variables(&chars[1..], ExpertSystemError::InvalidFact)?;
+                self.facts = parse_variables(
+                    &chars[1..],
+                    ExpertSystemError::InvalidFact,
+                    line_number,
+                    line,
+                )?;
                 let mut rule_with_facts = self.global_rule.clone();
                 rule_with_facts.set_facts(&self.facts);
                 if !rule_with_facts.is_satisfiable() {
-                    return Err(ExpertSystemError::Contradiction(
+                    return Err(ExpertSystemError::Contradiction(line_info(
                         line_number,
-                        line.to_owned(),
-                    ));
+                        line,
+                    )));
                 }
                 self.got_facts = true;
                 self.last_is_query = false;
             }
             '?' => {
-                let queries = parse_variables(&chars[1..], ExpertSystemError::InvalidQuery)?;
+                let queries = parse_variables(
+                    &chars[1..],
+                    ExpertSystemError::InvalidQuery,
+                    line_number,
+                    line,
+                )?;
                 let results = query(self.global_rule.clone(), &self.facts, &queries);
                 println!("={}:", self.facts.iter().collect::<String>());
                 for (fact, value) in results.iter().sorted() {
@@ -153,16 +165,16 @@ impl State {
                 self.last_is_query = true;
             }
             _ => {
-                let mut new_rule = Rule::parse(&chars)?;
+                let mut new_rule = Rule::parse(&chars, line_number, line)?;
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
                 self.global_rule.merge(new_rule);
                 if !self.global_rule.is_satisfiable() {
-                    return Err(ExpertSystemError::Contradiction(
+                    return Err(ExpertSystemError::Contradiction(line_info(
                         line_number,
-                        line.to_owned(),
-                    ));
+                        line,
+                    )));
                 }
                 self.last_is_query = false;
             }
