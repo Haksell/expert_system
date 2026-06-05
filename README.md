@@ -2,13 +2,10 @@
 
 ## todo
 
-- if no arg: stdin (with commands to clear and display rule)
-- --interactive flag with file
-- different errors between stdin and file mode
 - implement custom display for errors
+- testing of update
 - testing of parsing
 - dsu to optimize the bruteforce
-- clap better help
 
 ## subject
 
@@ -40,11 +37,11 @@ the order of operations is:
 
 ## bonus
 
-- [ ] interactive fact validation
+- [x] interactive fact validation
 - [x] multiple queries and facts in same file
-- [ ] reasoning visualization
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)
+- [ ] reasoning visualization
 - ... (at least one more bonus for 125)
 
 ## notes

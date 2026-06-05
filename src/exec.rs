@@ -1,4 +1,8 @@
-use crate::{Troolean, error::ExpertSystemError, rule::Rule};
+use crate::{
+    Troolean,
+    error::{ExpertSystemError, InteractiveHandling},
+    rule::Rule,
+};
 use itertools::Itertools as _;
 use rustyline::error::ReadlineError;
 use std::{
@@ -50,7 +54,15 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
             for line_number in 0.. {
                 let input = rl.readline(">> ");
                 match input {
-                    Ok(line) => program.update(line_number, &line)?,
+                    Ok(line) => {
+                        if let Err(err) = program.update(line_number, &line) {
+                            match err.interactive_handling() {
+                                InteractiveHandling::Error => return Err(err),
+                                InteractiveHandling::Warning => println!("Warning: {err:?}"),
+                                InteractiveHandling::Acceptable => {}
+                            }
+                        }
+                    }
                     Err(readline_error @ (ReadlineError::Io(_) | ReadlineError::Errno(_))) => {
                         return Err(ExpertSystemError::ReadlineError(readline_error));
                     }
@@ -67,9 +79,6 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
 
     if program.empty_file {
         return Err(ExpertSystemError::EmptyFile);
-    }
-    if !program.got_facts {
-        return Err(ExpertSystemError::MissingFacts);
     }
     if !program.got_queries {
         return Err(ExpertSystemError::MissingQueries);
