@@ -1,6 +1,6 @@
 # expert_system
 
-## subject
+## mandatory
 
 parsing:
 - [x] your program must accept one parameter: the input file
@@ -34,7 +34,6 @@ engine:
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)
 
-## notes
+## note
 
-- the subject requires to parse `+` as the AND operator, but it is generally used for the OR operator. we support it but prefer the more natural `&` and `|` in our examples.
-- all binary gates: https://gist.github.com/cky26/58b28f011d512de1620719517dd7c0d4
+the subject requires to parse `+` as the AND operator, but it is generally used for the OR operator. we support it but prefer the more natural `&` and `|` in our examples.
