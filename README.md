@@ -2,14 +2,10 @@
 
 ## todo
 
-- handle undetermined or/xor in conclusion with backward chaining
-- more tests:
-  - testing of update
-  - better test with xor
-  - testing with false
-  - testing of parsing
-- remove all commented out code
-- ctrl+F `TODO`
+- testing of update
+- better test with xor
+- testing with false
+- testing of parsing
 
 ## subject
 
@@ -39,11 +35,11 @@ engine:
 
 ## bonus
 
+- [x] SAT solver (★)
 - [x] interactive fact validation
 - [x] multiple queries and facts in same file
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)
-- [x] SAT solver
 
 ## notes
 
