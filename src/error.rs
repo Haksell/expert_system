@@ -15,6 +15,7 @@ pub enum ExpertSystemError {
     EmptyFile,
     UnusedFactsOrRules,
     Contradiction(#[expect(unused)] usize, #[expect(unused)] String),
+    ReadlineError(#[expect(unused)] rustyline::error::ReadlineError),
 }
 
 impl From<std::io::Error> for ExpertSystemError {

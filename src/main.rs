@@ -32,9 +32,9 @@ fn main() -> Result<(), ExpertSystemError> {
             cmd.print_help()?;
             std::process::exit(2);
         }
-        (None, true) => exec(ExecMode::InteractiveWithoutFile)?,
-        (Some(filename), true) => exec(ExecMode::OnlyFile(filename))?,
-        (Some(filename), false) => exec(ExecMode::InteractiveWithFile(filename))?,
+        (None, true) => exec(&ExecMode::InteractiveWithoutFile)?,
+        (Some(filename), true) => exec(&ExecMode::OnlyFile(filename))?,
+        (Some(filename), false) => exec(&ExecMode::InteractiveWithFile(filename))?,
     }
     Ok(())
 }

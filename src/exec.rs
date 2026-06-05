@@ -1,5 +1,6 @@
 use crate::{Troolean, error::ExpertSystemError, rule::Rule};
 use itertools::Itertools as _;
+use rustyline::error::ReadlineError;
 use std::{
     collections::HashMap,
     fs::File,
@@ -24,10 +25,10 @@ pub enum ExecMode {
     InteractiveWithoutFile,
 }
 
-pub fn exec(mode: ExecMode) -> Result<(), ExpertSystemError> {
+pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
     let mut program = Program::new();
 
-    match mode {
+    match &mode {
         ExecMode::OnlyFile(filename) | ExecMode::InteractiveWithFile(filename) => {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
@@ -36,6 +37,32 @@ pub fn exec(mode: ExecMode) -> Result<(), ExpertSystemError> {
             }
         }
         ExecMode::InteractiveWithoutFile => {}
+    }
+
+    match &mode {
+        ExecMode::InteractiveWithFile(_) | ExecMode::InteractiveWithoutFile => {
+            let mut rl = match rustyline::DefaultEditor::new() {
+                Ok(rl) => rl,
+                Err(readline_error) => {
+                    return Err(ExpertSystemError::ReadlineError(readline_error));
+                }
+            };
+            for line_number in 0.. {
+                let input = rl.readline(">> ");
+                match input {
+                    Ok(line) => program.update(line_number, &line)?,
+                    Err(readline_error @ (ReadlineError::Io(_) | ReadlineError::Errno(_))) => {
+                        return Err(ExpertSystemError::ReadlineError(readline_error));
+                    }
+                    Err(ReadlineError::Eof | ReadlineError::Interrupted) => {
+                        println!("Bye.");
+                        return Ok(());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        ExecMode::OnlyFile(_) => {}
     }
 
     if program.empty_file {
@@ -95,19 +122,23 @@ impl Program {
         match chars[0] {
             '=' => {
                 self.facts = parse_variables(&chars[1..], ExpertSystemError::InvalidFact)?;
+                let mut rule_with_facts = self.global_rule.clone();
+                rule_with_facts.set_facts(&self.facts);
+                if !rule_with_facts.is_satisfiable() {
+                    return Err(ExpertSystemError::Contradiction(
+                        line_number,
+                        line.to_owned(),
+                    ));
+                }
                 self.got_facts = true;
                 self.last_is_query = false;
             }
             '?' => {
                 let queries = parse_variables(&chars[1..], ExpertSystemError::InvalidQuery)?;
-                match solve(self.global_rule.clone(), &self.facts, &queries) {
-                    Some(results) => {
-                        println!("={}:", self.facts.iter().collect::<String>());
-                        for (fact, value) in results.iter().sorted() {
-                            println!("{fact} is {value:?}");
-                        }
-                    }
-                    None => println!("There is a contradiction in the rules."),
+                let results = query(self.global_rule.clone(), &self.facts, &queries);
+                println!("={}:", self.facts.iter().collect::<String>());
+                for (fact, value) in results.iter().sorted() {
+                    println!("{fact} is {value:?}");
                 }
                 self.got_queries = true;
                 self.last_is_query = true;
@@ -132,11 +163,8 @@ impl Program {
     }
 }
 
-pub fn solve(mut rule: Rule, facts: &[char], queries: &[char]) -> Option<HashMap<char, Troolean>> {
+pub fn query(mut rule: Rule, facts: &[char], queries: &[char]) -> HashMap<char, Troolean> {
     rule.set_facts(facts);
-    if !rule.is_satisfiable() {
-        return None;
-    }
 
     let mut results = HashMap::new();
     for &query in queries {
@@ -150,5 +178,5 @@ pub fn solve(mut rule: Rule, facts: &[char], queries: &[char]) -> Option<HashMap
         results.insert(query, result);
     }
 
-    Some(results)
+    results
 }
