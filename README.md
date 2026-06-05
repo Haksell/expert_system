@@ -3,6 +3,7 @@
 ## todo
 
 - retarded no ambiguity of subject
+- or and xor ambiguous in not mode ambiguous
 - testing of update
 - tests with ambiguity in mandatory subject mode
 - better test with xor

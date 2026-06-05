@@ -9,20 +9,19 @@ use crate::{
 use clap::{CommandFactory as _, Parser};
 use std::path::PathBuf;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Quadrulean {
-    Contradiction, // TODO: check useful
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Troolean {
     False,
-    True,
     Ambiguous,
+    True,
 }
-impl Quadrulean {
-    const fn new(can_be_false: bool, can_be_true: bool) -> Self {
-        match (can_be_false, can_be_true) {
-            (false, false) => Self::Contradiction,
-            (true, false) => Self::False,
-            (false, true) => Self::True,
-            (true, true) => Self::Ambiguous,
+
+impl std::fmt::Display for Troolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::False => write!(f, "false"),
+            Self::Ambiguous => write!(f, "ambiguous"),
+            Self::True => write!(f, "true"),
         }
     }
 }

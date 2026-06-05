@@ -1,5 +1,5 @@
 use crate::{
-    Quadrulean,
+    Troolean,
     error::{ExpertSystemError, InteractiveHandling, LineInfo},
     rule::Rule,
 };
@@ -151,17 +151,16 @@ impl State {
             '?' => {
                 let queries =
                     parse_variables(&chars[1..], ExpertSystemError::InvalidQuery, &line_info)?;
+                if queries.is_empty() {
+                    return Err(ExpertSystemError::EmptyQuery(line_info));
+                }
                 let results = query(
                     self.global_rule.clone(),
                     &self.given_facts,
                     &self.implied_facts,
                     &queries,
                 );
-                // TODO: better print
-                println!("={}:", self.given_facts.iter().collect::<String>());
-                for (fact, value) in results.iter().sorted() {
-                    println!("{fact} is {value:?}");
-                }
+                print_query_results(&self.given_facts, &results);
                 self.got_queries = true;
                 self.last_is_query = true;
             }
@@ -183,13 +182,39 @@ impl State {
     }
 }
 
+fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troolean>) {
+    fn print_facts_with_value(results: &HashMap<char, Troolean>, value_to_print: Troolean) {
+        let facts_to_print = results
+            .iter()
+            .filter_map(|(k, v)| (*v == value_to_print).then_some(k))
+            .sorted()
+            .collect::<String>();
+        match facts_to_print.len() {
+            0 => {}
+            1 => println!("- Fact {facts_to_print} is {value_to_print}."),
+            _ => println!("- Facts {facts_to_print} are {value_to_print}."),
+        }
+    }
+
+    let given_facts = given_facts.iter().sorted().collect::<String>();
+    match given_facts.len() {
+        0 => println!("Given no fact:"),
+        1 => println!("Given fact {given_facts}:"),
+        _ => println!("Given facts {given_facts}:"),
+    }
+
+    print_facts_with_value(results, Troolean::False);
+    print_facts_with_value(results, Troolean::Ambiguous);
+    print_facts_with_value(results, Troolean::True);
+}
+
 // TODO: inside impl State
 pub fn query(
     mut rule: Rule,
     given_facts: &HashSet<char>,
     implied_facts: &HashSet<char>,
     queries: &HashSet<char>,
-) -> HashMap<char, Quadrulean> {
+) -> HashMap<char, Troolean> {
     // println!("{given_facts:?} {implied_facts:?}");
     rule.set_facts(given_facts, implied_facts);
     // println!("{rule:#?}");
@@ -200,9 +225,9 @@ pub fn query(
             !given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
         // let can_be_true = rule.is_satisfiable_with_fact(query, true);
         let result = if can_be_false {
-            Quadrulean::False
+            Troolean::False
         } else {
-            Quadrulean::True
+            Troolean::True
         };
         results.insert(query, result);
     }

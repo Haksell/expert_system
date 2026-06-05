@@ -14,6 +14,7 @@ pub enum ExpertSystemError {
     InvalidToken(LineInfo, String),
     InvalidFact(LineInfo, char),
     InvalidQuery(LineInfo, char),
+    EmptyQuery(LineInfo),
     UnbalancedParentheses(LineInfo),
     MissingImplication(LineInfo),
     MultipleImplications(LineInfo),
@@ -47,6 +48,9 @@ impl std::fmt::Display for ExpertSystemError {
             }
             Self::InvalidQuery(line_info, query) => {
                 write!(f, "invalid query: `{query}`{}", display_line(line_info))
+            }
+            Self::EmptyQuery(line_info) => {
+                write!(f, "empty query{}", display_line(line_info))
             }
             Self::UnbalancedParentheses(line_info) => {
                 write!(f, "unbalanced parentheses{}", display_line(line_info))
@@ -89,6 +93,7 @@ impl ExpertSystemError {
             Self::InvalidToken(_, _)
             | Self::InvalidFact(_, _)
             | Self::InvalidQuery(_, _)
+            | Self::EmptyQuery(_)
             | Self::UnbalancedParentheses(_)
             | Self::MissingImplication(_)
             | Self::MultipleImplications(_)
