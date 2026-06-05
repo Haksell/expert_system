@@ -1,0 +1,12 @@
+B & !C => A
+
+?A # Ambiguous
+
+=B
+?A # True
+
+=C
+?A # False
+
+=BC
+?A # False

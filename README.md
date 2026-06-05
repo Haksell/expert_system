@@ -2,7 +2,10 @@
 
 ## todo
 
+- todo: retarded no ambiguity of subject
 - testing of update
+- better test with xor
+- testing with false
 - testing of parsing
 - dsu to optimize the bruteforce
 
@@ -40,6 +43,7 @@ the order of operations is:
 - [x] multiple queries and facts in same file
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)
+- [ ] --ambiguity flag
 - [ ] reasoning visualization
 - ... (at least one more bonus for 125)
 
