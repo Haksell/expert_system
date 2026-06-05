@@ -28,32 +28,37 @@ impl std::fmt::Display for Troolean {
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum InferenceEngine {
+    #[value(alias("sat"))]
     SatSolver,
+    #[value(alias("backward"))]
     BackwardChaining,
     // TODO: ForwardChaining
 }
 
 #[derive(Debug, Parser)]
 struct Args {
-    filename: Option<PathBuf>,
+    /// Path to a file containing rules, facts and queries.
+    path: Option<PathBuf>,
+    /// Launch an interactive shell.
     #[arg(short, long)]
     interactive: bool,
+    /// Select an inference engine.
     #[arg(short, long, value_enum, default_value_t = InferenceEngine::BackwardChaining)]
     engine: InferenceEngine,
 }
 
 fn main() {
     let args = Args::parse();
-    let exec_result = match (args.filename, args.interactive) {
+    let exec_result = match (args.path, args.interactive) {
         (None, false) => {
             let mut cmd = Args::command();
-            eprintln!("error: either provide a filename or use --interactive\n");
+            eprintln!("Error: either provide a file path or use --interactive\n");
             cmd.print_help().unwrap();
             std::process::exit(2);
         }
         (None, true) => exec(&ExecMode::InteractiveWithoutFile, args.engine),
-        (Some(filename), false) => exec(&ExecMode::OnlyFile(filename), args.engine),
-        (Some(filename), true) => exec(&ExecMode::InteractiveWithFile(filename), args.engine),
+        (Some(path), false) => exec(&ExecMode::OnlyFile(path), args.engine),
+        (Some(path), true) => exec(&ExecMode::InteractiveWithFile(path), args.engine),
     };
     if let Err(err) = exec_result {
         eprintln!("Error: {err}");
