@@ -263,6 +263,8 @@ mod tests {
     use super::*;
     use Troolean::*;
 
+    // TODO: parsing tests
+
     #[test]
     fn backward_chaining_only_and() {
         let exec_result = exec(
@@ -481,6 +483,23 @@ mod tests {
                 HashMap::from([('A', True), ('B', Ambiguous)]),
                 HashMap::from([('A', Ambiguous), ('B', True)]),
                 HashMap::from([('A', True), ('B', True)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn sat_solver_double_not_parentheses() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/double_not_parentheses.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            &query_results,
+            &[
+                HashMap::from([('C', Ambiguous)]),
+                HashMap::from([('C', True)])
             ]
         );
     }

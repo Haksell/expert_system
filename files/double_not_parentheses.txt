@@ -4,5 +4,12 @@
 !!(A & B) => C
 !!!(D & E) => C
 
+# equivalent of
+# A & B => C
+# !D | !E => C
+
 =AD
+?C
+
+=AB
 ?C

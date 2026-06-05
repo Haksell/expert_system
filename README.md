@@ -1,12 +1,5 @@
 # expert_system
 
-## todo
-
-- testing of update
-- better test with xor
-- testing with false
-- testing of parsing
-
 ## subject
 
 parsing:
