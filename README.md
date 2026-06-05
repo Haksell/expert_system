@@ -48,9 +48,7 @@ the order of operations is:
 - [x] multiple queries and facts in same file
 - [x] OR and XOR in conclusions
 - [x] equivalence (`<=>`) and reverse implication (`<=`)
-- [ ] --ambiguity flag
-- [ ] reasoning visualization
-- ... (at least one more bonus for 125)
+- [x] SAT solver
 
 ## notes
 
