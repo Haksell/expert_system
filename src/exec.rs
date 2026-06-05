@@ -12,6 +12,8 @@ use std::{
     path::PathBuf,
 };
 
+type QueryResult = HashMap<char, Troolean>;
+
 #[expect(clippy::enum_variant_names)]
 pub enum ExecMode {
     OnlyFile(PathBuf),
@@ -19,15 +21,19 @@ pub enum ExecMode {
     InteractiveWithoutFile,
 }
 
-pub fn exec(mode: &ExecMode, engine: InferenceEngine) -> Result<(), ExpertSystemError> {
+pub fn exec(
+    mode: &ExecMode,
+    engine: InferenceEngine,
+) -> Result<Vec<QueryResult>, ExpertSystemError> {
     let mut state = State::new(engine);
+    let mut query_results = Vec::new();
 
     match &mode {
         ExecMode::OnlyFile(filename) | ExecMode::InteractiveWithFile(filename) => {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
             for (line_number, line) in reader.lines().enumerate() {
-                state.update(&line?, Some(line_number + 1))?;
+                query_results.extend(state.update(&line?, Some(line_number + 1))?);
             }
         }
         ExecMode::InteractiveWithoutFile => {}
@@ -41,12 +47,13 @@ pub fn exec(mode: &ExecMode, engine: InferenceEngine) -> Result<(), ExpertSystem
                 match input {
                     Ok(line) => {
                         rl.add_history_entry(line.as_str())?;
-                        if let Err(err) = state.update(&line, None) {
-                            match err.interactive_handling() {
+                        match state.update(&line, None) {
+                            Ok(query_result) => query_results.extend(query_result),
+                            Err(err) => match err.interactive_handling() {
                                 InteractiveHandling::Error => return Err(err),
                                 InteractiveHandling::Warning => println!("Warning: {err}"),
                                 InteractiveHandling::Acceptable => {}
-                            }
+                            },
                         }
                     }
                     Err(readline_error @ (ReadlineError::Io(_) | ReadlineError::Errno(_))) => {
@@ -54,7 +61,7 @@ pub fn exec(mode: &ExecMode, engine: InferenceEngine) -> Result<(), ExpertSystem
                     }
                     Err(ReadlineError::Eof | ReadlineError::Interrupted) => {
                         println!("Bye.");
-                        return Ok(());
+                        return Ok(query_results);
                     }
                     _ => {}
                 }
@@ -73,7 +80,7 @@ pub fn exec(mode: &ExecMode, engine: InferenceEngine) -> Result<(), ExpertSystem
         return Err(ExpertSystemError::UnusedFactsOrRules);
     }
 
-    Ok(())
+    Ok(query_results)
 }
 
 #[expect(clippy::struct_excessive_bools)]
@@ -102,7 +109,11 @@ impl State {
         }
     }
 
-    fn update(&mut self, line: &str, line_number: Option<usize>) -> Result<(), ExpertSystemError> {
+    fn update(
+        &mut self,
+        line: &str,
+        line_number: Option<usize>,
+    ) -> Result<Option<QueryResult>, ExpertSystemError> {
         fn parse_variables(
             chars: &[char],
             error_fn: impl Fn(LineInfo, char) -> ExpertSystemError,
@@ -126,7 +137,7 @@ impl State {
             .take_while(|&c| c != '#')
             .collect_vec();
         if chars.is_empty() {
-            return Ok(());
+            return Ok(None);
         }
 
         self.empty_file = false;
@@ -151,10 +162,11 @@ impl State {
                 if queries.is_empty() {
                     return Err(ExpertSystemError::EmptyQuery(line_info));
                 }
-                let results = self.query(&queries);
-                print_query_results(&self.given_facts, &results);
+                let query_result = self.query(&queries);
+                print_query_result(&self.given_facts, &query_result);
                 self.got_queries = true;
                 self.last_is_query = true;
+                return Ok(Some(query_result));
             }
             _ => {
                 let (mut new_rule, new_implied_facts) =
@@ -171,10 +183,10 @@ impl State {
             }
         }
 
-        Ok(())
+        Ok(None)
     }
 
-    pub fn query(&self, queries: &HashSet<char>) -> HashMap<char, Troolean> {
+    pub fn query(&self, queries: &HashSet<char>) -> QueryResult {
         let mut rule = self.rule.clone();
         rule.set_facts(&self.given_facts, &self.antifacts());
         debug_assert!(rule.is_satisfiable());
@@ -220,9 +232,9 @@ impl State {
     }
 }
 
-fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troolean>) {
-    fn print_facts_with_value(results: &HashMap<char, Troolean>, value_to_print: Troolean) {
-        let facts_to_print = results
+fn print_query_result(given_facts: &HashSet<char>, query_result: &QueryResult) {
+    fn print_facts_with_value(query_result: &QueryResult, value_to_print: Troolean) {
+        let facts_to_print = query_result
             .iter()
             .filter_map(|(k, v)| (*v == value_to_print).then_some(k))
             .sorted()
@@ -241,7 +253,47 @@ fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troo
         _ => println!("Given facts {given_facts}:"),
     }
 
-    print_facts_with_value(results, Troolean::True);
-    print_facts_with_value(results, Troolean::False);
-    print_facts_with_value(results, Troolean::Ambiguous);
+    print_facts_with_value(query_result, Troolean::True);
+    print_facts_with_value(query_result, Troolean::False);
+    print_facts_with_value(query_result, Troolean::Ambiguous);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use Troolean::*;
+
+    #[test]
+    fn backward_chaining_only_and() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/only_and.txt")),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
+                HashMap::from([('A', True), ('F', True), ('K', False), ('P', True)])
+            ]
+        );
+    }
+
+    #[test]
+    fn sat_solver_only_and() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/only_and.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
+                HashMap::from([('A', True), ('F', True), ('K', Ambiguous), ('P', True)])
+            ]
+        );
+    }
 }

@@ -10,4 +10,4 @@ N => M
 =DEIJOP
 ?AFKP # AFKP true
 =DEIJP
-?AFKP # AFP true, K false
+?AFKP # AFP true, K: false if backward, ambiguous if sat

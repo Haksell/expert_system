@@ -9,7 +9,7 @@ use crate::{
 use clap::{CommandFactory as _, Parser, ValueEnum};
 use std::path::PathBuf;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Troolean {
     False,
     Ambiguous,
