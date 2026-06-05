@@ -2,5 +2,14 @@ A => A
 B <=> B
 !A <= !A
 
+=
+?AB
+
 =A
+?AB
+
+=B
+?AB
+
+=AB
 ?AB

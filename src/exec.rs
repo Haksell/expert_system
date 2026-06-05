@@ -465,4 +465,23 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn sat_solver_tautology() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/tautology.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            &query_results,
+            &[
+                HashMap::from([('A', Ambiguous), ('B', Ambiguous)]),
+                HashMap::from([('A', True), ('B', Ambiguous)]),
+                HashMap::from([('A', Ambiguous), ('B', True)]),
+                HashMap::from([('A', True), ('B', True)]),
+            ]
+        );
+    }
 }
