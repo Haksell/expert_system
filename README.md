@@ -6,7 +6,6 @@
 - different errors between stdin and file mode
 - implement custom display for errors
 - testing of parsing
-- simplify binary operations with same fact on both sides (e.g. `A ^ !A`)
 - dsu to optimize the bruteforce
 
 ## subject
@@ -18,7 +17,7 @@ parsing:
 - [x] this file will contain a list of queries
 - [x] a fact can be any uppercase alphabetical character
 - [x] if there is a syntax error in the input, the program must notify the user of the issue
-- [ ] if there is a contradiction in the input, the program must notify the user of the issue
+- [x] if there is a contradiction in the input, the program must notify the user of the issue
 
 the engine must support the following features:
 - [x] AND conditions. e.g. "If A and B and [...] then X".
@@ -31,9 +30,8 @@ the engine must support the following features:
 are used in arithmetic expressions.
 
 you must implement a backward-chaining inference engine:
-- [ ] for each query, the program must determine whether the query is true, false or undetermined
-- [ ] by default, all facts are considered false and can only be made true through the initial facts statement or the application of a rule
-- [ ] a fact can only be undetermined if the ruleset is ambiguous (e.g. "A is true, and if A then B or C", then B and C are undertermined)
+- [x] for each query, the program must determine whether the query is true, false or undetermined
+- [x] a fact can only be undetermined if the ruleset is ambiguous (e.g. "A is true, and if A then B or C", then B and C are undetermined)
 
 the order of operations is:
 - [x] `()`, `!`, `+`=`&`, `|`, `^`, `=>`=`<=>`=`<=`
