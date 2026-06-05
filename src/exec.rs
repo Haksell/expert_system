@@ -14,7 +14,7 @@ use std::{
 
 #[expect(clippy::struct_excessive_bools)]
 struct State {
-    global_rule: Rule,
+    rule: Rule,
     given_facts: HashSet<char>,
     // TODO: better name
     implied_facts: HashSet<char>,
@@ -95,7 +95,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
 impl State {
     fn new() -> Self {
         Self {
-            global_rule: Rule::tautology(),
+            rule: Rule::tautology(),
             given_facts: HashSet::new(),
             implied_facts: HashSet::new(),
             got_facts: false,
@@ -140,7 +140,7 @@ impl State {
             '=' => {
                 self.given_facts =
                     parse_variables(&chars[1..], ExpertSystemError::InvalidFact, &line_info)?;
-                let mut rule_with_facts = self.global_rule.clone();
+                let mut rule_with_facts = self.rule.clone();
                 rule_with_facts.set_facts(&self.given_facts, &self.implied_facts);
                 if !rule_with_facts.is_satisfiable() {
                     return Err(ExpertSystemError::Contradiction(line_info));
@@ -154,12 +154,7 @@ impl State {
                 if queries.is_empty() {
                     return Err(ExpertSystemError::EmptyQuery(line_info));
                 }
-                let results = query(
-                    self.global_rule.clone(),
-                    &self.given_facts,
-                    &self.implied_facts,
-                    &queries,
-                );
+                let results = self.query(&self.given_facts, &self.implied_facts, &queries);
                 print_query_results(&self.given_facts, &results);
                 self.got_queries = true;
                 self.last_is_query = true;
@@ -170,8 +165,8 @@ impl State {
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
-                self.global_rule.merge(new_rule);
-                if !self.global_rule.is_satisfiable() {
+                self.rule.merge(new_rule);
+                if !self.rule.is_satisfiable() {
                     return Err(ExpertSystemError::Contradiction(line_info));
                 }
                 self.last_is_query = false;
@@ -179,6 +174,34 @@ impl State {
         }
 
         Ok(())
+    }
+
+    // TODO: inside impl State
+    pub fn query(
+        &self,
+        given_facts: &HashSet<char>,
+        implied_facts: &HashSet<char>,
+        queries: &HashSet<char>,
+    ) -> HashMap<char, Troolean> {
+        // println!("{given_facts:?} {implied_facts:?}");
+        let mut rule = self.rule.clone();
+        rule.set_facts(given_facts, implied_facts);
+        // println!("{rule:#?}");
+
+        let mut results = HashMap::new();
+        for &query in queries {
+            let can_be_false =
+                !given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
+            // let can_be_true = rule.is_satisfiable_with_fact(query, true);
+            let result = if can_be_false {
+                Troolean::False
+            } else {
+                Troolean::True
+            };
+            results.insert(query, result);
+        }
+
+        results
     }
 }
 
@@ -206,31 +229,4 @@ fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troo
     print_facts_with_value(results, Troolean::False);
     print_facts_with_value(results, Troolean::Ambiguous);
     print_facts_with_value(results, Troolean::True);
-}
-
-// TODO: inside impl State
-pub fn query(
-    mut rule: Rule,
-    given_facts: &HashSet<char>,
-    implied_facts: &HashSet<char>,
-    queries: &HashSet<char>,
-) -> HashMap<char, Troolean> {
-    // println!("{given_facts:?} {implied_facts:?}");
-    rule.set_facts(given_facts, implied_facts);
-    // println!("{rule:#?}");
-
-    let mut results = HashMap::new();
-    for &query in queries {
-        let can_be_false =
-            !given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
-        // let can_be_true = rule.is_satisfiable_with_fact(query, true);
-        let result = if can_be_false {
-            Troolean::False
-        } else {
-            Troolean::True
-        };
-        results.insert(query, result);
-    }
-
-    results
 }
