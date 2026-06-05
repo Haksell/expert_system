@@ -198,10 +198,6 @@ impl Rule {
                         output.push(operators.pop().unwrap());
                     }
                     operators.pop();
-                    // TODO: remove?
-                    if operators.last() == Some(&Token::Not) {
-                        output.push(operators.pop().unwrap());
-                    }
                 }
                 Token::Equivalence
                 | Token::ConverseImplication
@@ -214,7 +210,6 @@ impl Rule {
                     }) {
                         output.push(operators.pop().unwrap());
                     }
-                    // TODO: handle NOT???
                     operators.push(token);
                 }
             }
