@@ -296,4 +296,108 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn backward_chaining_and_or() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/and_or.txt")),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', False)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', True)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn backward_chaining_and_xor() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/and_xor.txt")),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', False)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', False)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn backward_chaining_basic_negation() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/basic_negation.txt")),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', False)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', False)]),
+                HashMap::from([('A', False)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn backward_chaining_same_conclusion_in_multiple_rules() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from(
+                "./files/same_conclusion_in_multiple_rules.txt",
+            )),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', False)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', True)]),
+                HashMap::from([('A', True)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn backward_chaining_parenthesis() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/parenthesis.txt")),
+            InferenceEngine::BackwardChaining,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', True)]),
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', True)]),
+                HashMap::from([('E', True)]),
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', False)]),
+                HashMap::from([('E', True)]),
+                HashMap::from([('E', True)]),
+            ]
+        );
+    }
 }

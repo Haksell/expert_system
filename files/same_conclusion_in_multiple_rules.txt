@@ -2,13 +2,13 @@ B => A
 C => A
 
 =
-?A #false
+?A # false
 
 =B
-?A #true
+?A # true
 
 =C
-?A #true
+?A # true
 
 =BC
-?A #true
+?A # true
