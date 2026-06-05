@@ -2,6 +2,6 @@ A => B | C
 N => !B
 
 =A
-?BC
+?BC # both ambiguous
 =AN
-?BC
+?BC # B:false, C:true

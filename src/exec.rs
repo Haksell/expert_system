@@ -281,23 +281,6 @@ mod tests {
     }
 
     #[test]
-    fn sat_solver_only_and() {
-        let exec_result = exec(
-            &ExecMode::OnlyFile(PathBuf::from("./files/only_and.txt")),
-            InferenceEngine::SatSolver,
-        );
-        assert!(exec_result.is_ok());
-        let query_results = exec_result.unwrap();
-        assert_eq!(
-            query_results,
-            vec![
-                HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
-                HashMap::from([('A', True), ('F', True), ('K', Ambiguous), ('P', True)])
-            ]
-        );
-    }
-
-    #[test]
     fn backward_chaining_and_or() {
         let exec_result = exec(
             &ExecMode::OnlyFile(PathBuf::from("./files/and_or.txt")),
@@ -397,6 +380,57 @@ mod tests {
                 HashMap::from([('E', False)]),
                 HashMap::from([('E', True)]),
                 HashMap::from([('E', True)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn sat_solver_only_and() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/only_and.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
+                HashMap::from([('A', True), ('F', True), ('K', Ambiguous), ('P', True)])
+            ]
+        );
+    }
+
+    #[test]
+    fn sat_solver_or_in_conclusion() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/or_in_conclusion.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('B', Ambiguous), ('C', Ambiguous)]),
+                HashMap::from([('B', False), ('C', True)]),
+            ]
+        );
+    }
+
+    #[test]
+    fn sat_solver_xor_in_conclusion() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/xor_in_conclusion.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![
+                HashMap::from([('B', Ambiguous), ('C', Ambiguous)]),
+                HashMap::from([('B', True), ('C', False)]),
             ]
         );
     }
