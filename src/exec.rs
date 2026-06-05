@@ -191,8 +191,8 @@ fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troo
             .collect::<String>();
         match facts_to_print.len() {
             0 => {}
-            1 => println!("- Fact {facts_to_print} is {value_to_print}."),
-            _ => println!("- Facts {facts_to_print} are {value_to_print}."),
+            1 => println!("-> Fact {facts_to_print} is {value_to_print}."),
+            _ => println!("-> Facts {facts_to_print} are {value_to_print}."),
         }
     }
 
