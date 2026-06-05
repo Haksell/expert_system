@@ -434,4 +434,18 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn sat_solver_converse_implication() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/converse_implication.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            query_results,
+            vec![HashMap::from([('A', True), ('B', True), ('C', True)])]
+        );
+    }
 }
