@@ -32,6 +32,12 @@ impl From<std::io::Error> for ExpertSystemError {
     }
 }
 
+impl From<rustyline::error::ReadlineError> for ExpertSystemError {
+    fn from(value: rustyline::error::ReadlineError) -> Self {
+        Self::ReadlineError(value)
+    }
+}
+
 impl std::fmt::Display for ExpertSystemError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

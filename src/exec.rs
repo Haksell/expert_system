@@ -47,16 +47,12 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
 
     match &mode {
         ExecMode::InteractiveWithFile(_) | ExecMode::InteractiveWithoutFile => {
-            let mut rl = match rustyline::DefaultEditor::new() {
-                Ok(rl) => rl,
-                Err(readline_error) => {
-                    return Err(ExpertSystemError::ReadlineError(readline_error));
-                }
-            };
+            let mut rl = rustyline::DefaultEditor::new()?;
             loop {
                 let input = rl.readline(">> ");
                 match input {
                     Ok(line) => {
+                        rl.add_history_entry(line.as_str())?;
                         if let Err(err) = state.update(&line, None) {
                             match err.interactive_handling() {
                                 InteractiveHandling::Error => return Err(err),
