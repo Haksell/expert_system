@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }
-itertools = "0.14.0"
+itertools = "0.14"
+rustyline = "18.0"
 
 [lints.clippy]
 # Warn or deny all lints by default
@@ -29,6 +30,7 @@ allow_attributes_without_reason = "allow"
 arbitrary_source_item_ordering = "allow"
 arithmetic_side_effects = "allow"
 default_numeric_fallback = "allow"
+else_if_without_else = "allow"
 expect_used = "allow"
 implicit_return = "allow"
 indexing_slicing = "allow"

@@ -3,10 +3,12 @@
 ## todo
 
 - if no arg: stdin (with commands to clear and display rule)
+- --interactive flag with file
 - different errors between stdin and file mode
 - implement custom display for errors
 - testing of parsing
 - dsu to optimize the bruteforce
+- clap better help
 
 ## subject
 
