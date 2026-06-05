@@ -6,7 +6,7 @@ use crate::{
     error::ExpertSystemError,
     exec::{ExecMode, exec},
 };
-use clap::{CommandFactory as _, Parser};
+use clap::{CommandFactory as _, Parser, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -26,14 +26,20 @@ impl std::fmt::Display for Troolean {
     }
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum InferenceEngine {
+    SatSolver,
+    BackwardChaining,
+    // TODO: ForwardChaining
+}
+
 #[derive(Debug, Parser)]
 struct Args {
     filename: Option<PathBuf>,
     #[arg(short, long)]
     interactive: bool,
-    // TODO
-    //#[arg(long)]
-    //ambiguous: bool,
+    #[arg(short, long, value_enum, default_value_t = InferenceEngine::BackwardChaining)]
+    engine: InferenceEngine,
 }
 
 fn main() {
@@ -45,9 +51,9 @@ fn main() {
             cmd.print_help().unwrap();
             std::process::exit(2);
         }
-        (None, true) => exec(&ExecMode::InteractiveWithoutFile),
-        (Some(filename), false) => exec(&ExecMode::OnlyFile(filename)),
-        (Some(filename), true) => exec(&ExecMode::InteractiveWithFile(filename)),
+        (None, true) => exec(&ExecMode::InteractiveWithoutFile, args.engine),
+        (Some(filename), false) => exec(&ExecMode::OnlyFile(filename), args.engine),
+        (Some(filename), true) => exec(&ExecMode::InteractiveWithFile(filename), args.engine),
     };
     if let Err(err) = exec_result {
         eprintln!("Error: {err}");

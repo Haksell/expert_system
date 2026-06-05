@@ -1,5 +1,5 @@
 use crate::{
-    Troolean,
+    InferenceEngine, Troolean,
     error::{ExpertSystemError, InteractiveHandling, LineInfo},
     rule::Rule,
 };
@@ -12,18 +12,6 @@ use std::{
     path::PathBuf,
 };
 
-#[expect(clippy::struct_excessive_bools)]
-struct State {
-    rule: Rule,
-    given_facts: HashSet<char>,
-    // TODO: better name
-    implied_facts: HashSet<char>,
-    got_facts: bool,
-    got_queries: bool,
-    last_is_query: bool,
-    empty_file: bool,
-}
-
 #[expect(clippy::enum_variant_names)]
 pub enum ExecMode {
     OnlyFile(PathBuf),
@@ -31,8 +19,8 @@ pub enum ExecMode {
     InteractiveWithoutFile,
 }
 
-pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
-    let mut state = State::new();
+pub fn exec(mode: &ExecMode, engine: InferenceEngine) -> Result<(), ExpertSystemError> {
+    let mut state = State::new(engine);
 
     match &mode {
         ExecMode::OnlyFile(filename) | ExecMode::InteractiveWithFile(filename) => {
@@ -88,9 +76,23 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
     Ok(())
 }
 
+#[expect(clippy::struct_excessive_bools)]
+struct State {
+    engine: InferenceEngine,
+    rule: Rule,
+    given_facts: HashSet<char>,
+    // TODO: better name
+    implied_facts: HashSet<char>,
+    got_facts: bool,
+    got_queries: bool,
+    last_is_query: bool,
+    empty_file: bool,
+}
+
 impl State {
-    fn new() -> Self {
+    fn new(engine: InferenceEngine) -> Self {
         Self {
+            engine,
             rule: Rule::tautology(),
             given_facts: HashSet::new(),
             implied_facts: HashSet::new(),
@@ -137,7 +139,7 @@ impl State {
                 self.given_facts =
                     parse_variables(&chars[1..], ExpertSystemError::InvalidFact, &line_info)?;
                 let mut rule_with_facts = self.rule.clone();
-                rule_with_facts.set_facts(&self.given_facts, &self.implied_facts);
+                rule_with_facts.set_facts(&self.given_facts, &self.antifacts());
                 if !rule_with_facts.is_satisfiable() {
                     return Err(ExpertSystemError::Contradiction(line_info));
                 }
@@ -150,7 +152,7 @@ impl State {
                 if queries.is_empty() {
                     return Err(ExpertSystemError::EmptyQuery(line_info));
                 }
-                let results = self.query(&self.given_facts, &self.implied_facts, &queries);
+                let results = self.query(&queries);
                 print_query_results(&self.given_facts, &results);
                 self.got_queries = true;
                 self.last_is_query = true;
@@ -172,32 +174,48 @@ impl State {
         Ok(())
     }
 
-    // TODO: inside impl State
-    pub fn query(
-        &self,
-        given_facts: &HashSet<char>,
-        implied_facts: &HashSet<char>,
-        queries: &HashSet<char>,
-    ) -> HashMap<char, Troolean> {
-        // println!("{given_facts:?} {implied_facts:?}");
+    pub fn query(&self, queries: &HashSet<char>) -> HashMap<char, Troolean> {
         let mut rule = self.rule.clone();
-        rule.set_facts(given_facts, implied_facts);
-        // println!("{rule:#?}");
+        rule.set_facts(&self.given_facts, &self.antifacts());
+        debug_assert!(rule.is_satisfiable());
 
         let mut results = HashMap::new();
         for &query in queries {
             let can_be_false =
-                !given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
-            // let can_be_true = rule.is_satisfiable_with_fact(query, true);
-            let result = if can_be_false {
-                Troolean::False
-            } else {
-                Troolean::True
+                !self.given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
+            let can_be_true = rule.is_satisfiable_with_fact(query, true);
+            let result = match self.engine {
+                InferenceEngine::SatSolver => match (can_be_false, can_be_true) {
+                    (true, true) => Troolean::Ambiguous,
+                    (true, false) => Troolean::False,
+                    (false, true) => Troolean::True,
+                    (false, false) => unreachable!("contradiction checked when setting facts"),
+                },
+                InferenceEngine::BackwardChaining => {
+                    if can_be_false {
+                        Troolean::False
+                    } else {
+                        Troolean::True
+                    }
+                }
             };
             results.insert(query, result);
         }
 
         results
+    }
+
+    fn antifacts(&self) -> HashSet<char> {
+        match self.engine {
+            InferenceEngine::SatSolver => HashSet::new(),
+            InferenceEngine::BackwardChaining => self
+                .rule
+                .get_variables()
+                .iter()
+                .filter(|f| !self.given_facts.contains(f) && !self.implied_facts.contains(f))
+                .copied()
+                .collect(),
+        }
     }
 }
 
@@ -222,7 +240,7 @@ fn print_query_results(given_facts: &HashSet<char>, results: &HashMap<char, Troo
         _ => println!("Given facts {given_facts}:"),
     }
 
+    print_facts_with_value(results, Troolean::True);
     print_facts_with_value(results, Troolean::False);
     print_facts_with_value(results, Troolean::Ambiguous);
-    print_facts_with_value(results, Troolean::True);
 }

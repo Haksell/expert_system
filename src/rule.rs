@@ -333,27 +333,25 @@ impl Rule {
         }
     }
 
-    pub fn set_facts(&mut self, given_facts: &HashSet<char>, implied_facts: &HashSet<char>) {
+    pub fn set_facts(&mut self, given_facts: &HashSet<char>, antifacts: &HashSet<char>) {
         match self {
             Self::Fact(f) => {
                 if given_facts.contains(f) {
-                    // println!("{f}: true");
                     *self = Self::Bool(true);
-                } else if !implied_facts.contains(f) {
-                    // println!("{f}: false");
+                } else if antifacts.contains(f) {
                     *self = Self::Bool(false);
                 }
             }
             Self::Bool(_) => {}
             Self::Not(rule) => {
-                rule.set_facts(given_facts, implied_facts);
+                rule.set_facts(given_facts, antifacts);
                 if let Self::Bool(b) = rule.as_ref() {
                     *self = Self::Bool(!b);
                 }
             }
             Self::And(rule1, rule2) => {
-                rule1.set_facts(given_facts, implied_facts);
-                rule2.set_facts(given_facts, implied_facts);
+                rule1.set_facts(given_facts, antifacts);
+                rule2.set_facts(given_facts, antifacts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 && *b2),
                     (Self::Bool(true), child) | (child, Self::Bool(true)) => *self = child.clone(),
@@ -362,8 +360,8 @@ impl Rule {
                 }
             }
             Self::Or(rule1, rule2) => {
-                rule1.set_facts(given_facts, implied_facts);
-                rule2.set_facts(given_facts, implied_facts);
+                rule1.set_facts(given_facts, antifacts);
+                rule2.set_facts(given_facts, antifacts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 || *b2),
                     (Self::Bool(false), child) | (child, Self::Bool(false)) => {
@@ -374,8 +372,8 @@ impl Rule {
                 }
             }
             Self::Xor(rule1, rule2) => {
-                rule1.set_facts(given_facts, implied_facts);
-                rule2.set_facts(given_facts, implied_facts);
+                rule1.set_facts(given_facts, antifacts);
+                rule2.set_facts(given_facts, antifacts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 ^ *b2),
                     (Self::Bool(true), Self::Not(child)) | (Self::Not(child), Self::Bool(true)) => {

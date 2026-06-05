@@ -2,16 +2,17 @@
 
 ## todo
 
-ambiguous flag:
-- add back
-- can only be undetermined if or/xor in conclusion
-- otherwise like before
+- handle undetermined or/xor in conclusion with backward chaining
 
 more tests:
 - testing of update
 - better test with xor
 - testing with false
 - testing of parsing
+
+clean:
+- remove all prints
+- remove all commented out code
 
 ## subject
 
