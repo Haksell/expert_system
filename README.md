@@ -3,16 +3,13 @@
 ## todo
 
 - handle undetermined or/xor in conclusion with backward chaining
-
-more tests:
-- testing of update
-- better test with xor
-- testing with false
-- testing of parsing
-
-clean:
-- remove all prints
+- more tests:
+  - testing of update
+  - better test with xor
+  - testing with false
+  - testing of parsing
 - remove all commented out code
+- ctrl+F `TODO`
 
 ## subject
 

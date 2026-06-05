@@ -81,7 +81,6 @@ struct State {
     engine: InferenceEngine,
     rule: Rule,
     given_facts: HashSet<char>,
-    // TODO: better name
     implied_facts: HashSet<char>,
     got_facts: bool,
     got_queries: bool,

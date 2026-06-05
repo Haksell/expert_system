@@ -2,7 +2,6 @@ use crate::{ExpertSystemError, error::LineInfo};
 use itertools::Itertools as _;
 use std::collections::{HashMap, HashSet};
 
-// TODO: don't implement Clone
 #[derive(Clone, Debug)]
 pub enum Rule {
     Bool(bool),
@@ -144,7 +143,6 @@ impl Rule {
         })
     }
 
-    // TODO: handle broken input (A&B|)
     fn infix_to_rpn(tokens: Vec<Token>) -> Vec<Token> {
         let mut output = Vec::new();
         let mut operators = Vec::new();
@@ -245,7 +243,6 @@ impl Rule {
     pub fn apply_de_morgan(&mut self) -> bool {
         match self {
             Self::Bool(_) | Self::Fact(_) => false,
-            // TODO: remove .clone()
             Self::Not(child) => match *child.clone() {
                 Self::Bool(_) | Self::Fact(_) => false,
                 Self::Not(_) => child.apply_de_morgan(),
@@ -308,7 +305,6 @@ impl Rule {
     pub fn remove_double_negation(&mut self) {
         match self {
             Self::Bool(_) | Self::Fact(_) => {}
-            // TODO: remove .clone()
             Self::Not(child) => match *child.clone() {
                 Self::Bool(_) | Self::Fact(_) => {}
                 Self::Not(grandchild) => {
@@ -328,7 +324,6 @@ impl Rule {
         if self.is_tautology() {
             *self = other;
         } else if !other.is_tautology() {
-            // TODO: no clone
             *self = Self::And(Box::new(self.clone()), Box::new(other));
         }
     }
@@ -412,7 +407,6 @@ impl Rule {
         }
     }
 
-    // TODO: remove (store variables directly in Rule)
     pub fn get_variables(&self) -> Vec<char> {
         fn helper(tree: &Rule, variables: &mut HashSet<char>) {
             match tree {
