@@ -157,7 +157,8 @@ impl State {
                 self.last_is_query = true;
             }
             _ => {
-                let (mut new_rule, new_implied_facts) = Rule::parse(&chars, &line_info)?;
+                let (mut new_rule, new_implied_facts) =
+                    Rule::parse(&chars, &line_info, self.engine)?;
                 self.implied_facts.extend(&new_implied_facts);
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
@@ -182,6 +183,7 @@ impl State {
         for &query in queries {
             let can_be_false =
                 !self.given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
+            // TODO: can_be_true = self.given_facts.contains(&query) || ...
             let can_be_true = rule.is_satisfiable_with_fact(query, true);
             let result = match self.engine {
                 InferenceEngine::SatSolver => match (can_be_false, can_be_true) {

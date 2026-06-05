@@ -26,7 +26,7 @@ impl std::fmt::Display for Troolean {
     }
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
 enum InferenceEngine {
     #[value(alias("sat"))]
     SatSolver,

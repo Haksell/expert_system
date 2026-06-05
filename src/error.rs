@@ -14,6 +14,7 @@ pub enum ExpertSystemError {
     InvalidToken(LineInfo, String),
     InvalidFact(LineInfo, char),
     InvalidQuery(LineInfo, char),
+    ForbiddenTokenInConclusion(LineInfo, String),
     EmptyQuery(LineInfo),
     UnbalancedParentheses(LineInfo),
     MissingImplication(LineInfo),
@@ -48,6 +49,13 @@ impl std::fmt::Display for ExpertSystemError {
             Self::UnusedFactsOrRules => write!(f, "unused facts or rules"),
             Self::InvalidToken(line_info, token) => {
                 write!(f, "invalid token: `{token}`{}", display_line(line_info))
+            }
+            Self::ForbiddenTokenInConclusion(line_info, token) => {
+                write!(
+                    f,
+                    "forbidden token in conclusion: `{token}`{}",
+                    display_line(line_info)
+                )
             }
             Self::InvalidFact(line_info, fact) => {
                 write!(f, "invalid fact: `{fact}`{}", display_line(line_info))
@@ -99,6 +107,7 @@ impl ExpertSystemError {
             Self::InvalidToken(_, _)
             | Self::InvalidFact(_, _)
             | Self::InvalidQuery(_, _)
+            | Self::ForbiddenTokenInConclusion(_, _)
             | Self::EmptyQuery(_)
             | Self::UnbalancedParentheses(_)
             | Self::MissingImplication(_)

@@ -1,4 +1,4 @@
-use crate::{ExpertSystemError, error::LineInfo};
+use crate::{ExpertSystemError, InferenceEngine, error::LineInfo};
 use itertools::Itertools as _;
 use std::collections::{HashMap, HashSet};
 
@@ -16,9 +16,10 @@ impl Rule {
     pub fn parse(
         chars: &[char],
         line_info: &LineInfo,
+        engine: InferenceEngine,
     ) -> Result<(Self, HashSet<char>), ExpertSystemError> {
         let tokens = Self::tokenize(chars, line_info)?;
-        let implied_facts = Self::check(&tokens, line_info)?;
+        let implied_facts = Self::check(&tokens, line_info, engine)?;
         let tokens = Self::infix_to_rpn(tokens);
         let rule = Self::build(tokens, line_info)?;
         Ok((rule, implied_facts))
@@ -81,11 +82,17 @@ impl Rule {
         Ok(tokens)
     }
 
-    fn check(tokens: &[Token], line_info: &LineInfo) -> Result<HashSet<char>, ExpertSystemError> {
+    fn check(
+        tokens: &[Token],
+        line_info: &LineInfo,
+        engine: InferenceEngine,
+    ) -> Result<HashSet<char>, ExpertSystemError> {
         let mut cnt_open = 0;
         let mut implication_type = None;
         let mut facts_before_implication = HashSet::new();
         let mut facts_after_implication = HashSet::new();
+        let mut tokens_before_implication = HashSet::new();
+        let mut tokens_after_implication = HashSet::new();
 
         for token in tokens {
             match token {
@@ -116,6 +123,20 @@ impl Rule {
                 }
                 Token::Xor | Token::Or | Token::And | Token::Not => {}
             }
+
+            if !matches!(
+                token,
+                Token::Fact(_)
+                    | Token::Implication
+                    | Token::ConverseImplication
+                    | Token::Equivalence
+            ) {
+                if implication_type.is_some() {
+                    tokens_after_implication.insert(token);
+                } else {
+                    tokens_before_implication.insert(token);
+                }
+            }
         }
 
         if cnt_open != 0 {
@@ -126,13 +147,14 @@ impl Rule {
             return Err(ExpertSystemError::MissingImplication(line_info.clone()));
         };
 
-        Ok(match implication_type {
+        let (tokens_in_conclusion, facts_in_conclusion) = match implication_type {
             Token::Equivalence => {
+                tokens_before_implication.extend(tokens_after_implication);
                 facts_before_implication.extend(facts_after_implication);
-                facts_before_implication
+                (tokens_before_implication, facts_before_implication)
             }
-            Token::Implication => facts_after_implication,
-            Token::ConverseImplication => facts_before_implication,
+            Token::Implication => (tokens_after_implication, facts_after_implication),
+            Token::ConverseImplication => (tokens_before_implication, facts_before_implication),
             Token::Fact(_)
             | Token::Xor
             | Token::Or
@@ -140,7 +162,20 @@ impl Rule {
             | Token::Not
             | Token::LeftParenthesis
             | Token::RightParenthesis => unreachable!(),
-        })
+        };
+
+        if engine == InferenceEngine::BackwardChaining
+            && let Some(forbidden_token) = tokens_in_conclusion
+                .iter()
+                .find(|token| !matches!(token, Token::And))
+        {
+            return Err(ExpertSystemError::ForbiddenTokenInConclusion(
+                line_info.clone(),
+                forbidden_token.to_string(),
+            ));
+        }
+
+        Ok(facts_in_conclusion)
     }
 
     fn infix_to_rpn(tokens: Vec<Token>) -> Vec<Token> {
@@ -475,7 +510,7 @@ impl Rule {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Token {
     Fact(char),
     Equivalence,
@@ -487,6 +522,23 @@ enum Token {
     Not,
     LeftParenthesis,
     RightParenthesis,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fact(c) => write!(f, "{c}"),
+            Self::Equivalence => write!(f, "<=>"),
+            Self::Implication => write!(f, "=>"),
+            Self::ConverseImplication => write!(f, "<="),
+            Self::Xor => write!(f, "^"),
+            Self::Or => write!(f, "|"),
+            Self::And => write!(f, "&"),
+            Self::Not => write!(f, "!"),
+            Self::LeftParenthesis => write!(f, "("),
+            Self::RightParenthesis => write!(f, ")"),
+        }
+    }
 }
 
 impl Token {
