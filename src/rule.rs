@@ -1,4 +1,4 @@
-use crate::{ExpertSystemError, error::line_info};
+use crate::{ExpertSystemError, error::LineInfo};
 use itertools::Itertools as _;
 use std::collections::{HashMap, HashSet};
 
@@ -14,22 +14,14 @@ pub enum Rule {
 }
 
 impl Rule {
-    pub fn parse(
-        chars: &[char],
-        line_number: Option<usize>,
-        line: &str,
-    ) -> Result<Self, ExpertSystemError> {
-        let tokens = Self::tokenize(chars, line_number, line)?;
-        Self::check(&tokens, line_number, line)?;
+    pub fn parse(chars: &[char], line_info: &LineInfo) -> Result<Self, ExpertSystemError> {
+        let tokens = Self::tokenize(chars, line_info)?;
+        Self::check(&tokens, line_info)?;
         let tokens = Self::infix_to_rpn(tokens);
-        Self::build(tokens, line_number, line)
+        Self::build(tokens, line_info)
     }
 
-    fn tokenize(
-        chars: &[char],
-        line_number: Option<usize>,
-        line: &str,
-    ) -> Result<Vec<Token>, ExpertSystemError> {
+    fn tokenize(chars: &[char], line_info: &LineInfo) -> Result<Vec<Token>, ExpertSystemError> {
         let mut tokens = Vec::new();
         let mut current_token = String::new();
         for &c in chars {
@@ -50,7 +42,7 @@ impl Rule {
                     }
                     _ => {
                         return Err(ExpertSystemError::InvalidToken(
-                            line_info(line_number, line),
+                            line_info.clone(),
                             c.to_string(),
                         ));
                     }
@@ -68,7 +60,7 @@ impl Rule {
                     }
                     _ => {
                         return Err(ExpertSystemError::InvalidToken(
-                            line_info(line_number, line),
+                            line_info.clone(),
                             current_token,
                         ));
                     }
@@ -78,7 +70,7 @@ impl Rule {
 
         if !current_token.is_empty() {
             return Err(ExpertSystemError::InvalidToken(
-                line_info(line_number, line),
+                line_info.clone(),
                 current_token,
             ));
         }
@@ -86,11 +78,7 @@ impl Rule {
         Ok(tokens)
     }
 
-    fn check(
-        tokens: &[Token],
-        line_number: Option<usize>,
-        line: &str,
-    ) -> Result<(), ExpertSystemError> {
+    fn check(tokens: &[Token], line_info: &LineInfo) -> Result<(), ExpertSystemError> {
         let mut cnt_open = 0;
         let mut found_implication = false;
 
@@ -99,25 +87,18 @@ impl Rule {
                 Token::LeftParenthesis => cnt_open += 1,
                 Token::RightParenthesis => {
                     if cnt_open == 0 {
-                        return Err(ExpertSystemError::UnbalancedParentheses(line_info(
-                            line_number,
-                            line,
-                        )));
+                        return Err(ExpertSystemError::UnbalancedParentheses(line_info.clone()));
                     }
                     cnt_open -= 1;
                 }
                 Token::Implication | Token::ConverseImplication | Token::Equivalence => {
                     if found_implication {
-                        return Err(ExpertSystemError::MultipleImplications(line_info(
-                            line_number,
-                            line,
-                        )));
+                        return Err(ExpertSystemError::MultipleImplications(line_info.clone()));
                     }
                     if cnt_open != 0 {
-                        return Err(ExpertSystemError::ParenthesesAroundImplication(line_info(
-                            line_number,
-                            line,
-                        )));
+                        return Err(ExpertSystemError::ParenthesesAroundImplication(
+                            line_info.clone(),
+                        ));
                     }
                     found_implication = true;
                 }
@@ -126,16 +107,10 @@ impl Rule {
         }
 
         if !found_implication {
-            return Err(ExpertSystemError::MissingImplication(line_info(
-                line_number,
-                line,
-            )));
+            return Err(ExpertSystemError::MissingImplication(line_info.clone()));
         }
         if cnt_open != 0 {
-            return Err(ExpertSystemError::UnbalancedParentheses(line_info(
-                line_number,
-                line,
-            )));
+            return Err(ExpertSystemError::UnbalancedParentheses(line_info.clone()));
         }
 
         Ok(())
@@ -185,11 +160,7 @@ impl Rule {
         output
     }
 
-    fn build(
-        tokens: Vec<Token>,
-        line_number: Option<usize>,
-        line: &str,
-    ) -> Result<Self, ExpertSystemError> {
+    fn build(tokens: Vec<Token>, line_info: &LineInfo) -> Result<Self, ExpertSystemError> {
         let mut rules = Vec::new();
 
         for token in tokens {
@@ -199,10 +170,7 @@ impl Rule {
                     if let Some(rule) = rules.pop() {
                         rules.push(Self::Not(Box::new(rule)));
                     } else {
-                        return Err(ExpertSystemError::InvalidExpression(line_info(
-                            line_number,
-                            line,
-                        )));
+                        return Err(ExpertSystemError::InvalidExpression(line_info.clone()));
                     }
                 }
                 Token::Equivalence
@@ -214,10 +182,7 @@ impl Rule {
                     if let (Some(rule2), Some(rule1)) = (rules.pop(), rules.pop()) {
                         rules.push(Self::from_binary_token(token, rule1, rule2));
                     } else {
-                        return Err(ExpertSystemError::InvalidExpression(line_info(
-                            line_number,
-                            line,
-                        )));
+                        return Err(ExpertSystemError::InvalidExpression(line_info.clone()));
                     }
                 }
                 Token::LeftParenthesis | Token::RightParenthesis => unreachable!(),
@@ -225,10 +190,7 @@ impl Rule {
         }
 
         if rules.len() != 1 {
-            return Err(ExpertSystemError::InvalidExpression(line_info(
-                line_number,
-                line,
-            )));
+            return Err(ExpertSystemError::InvalidExpression(line_info.clone()));
         }
 
         Ok(rules.pop().unwrap())

@@ -1,6 +1,6 @@
 use crate::{
     Troolean,
-    error::{ExpertSystemError, InteractiveHandling, LineInfo, line_info},
+    error::{ExpertSystemError, InteractiveHandling, LineInfo},
     rule::Rule,
 };
 use itertools::Itertools as _;
@@ -37,7 +37,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
             for (line_number, line) in reader.lines().enumerate() {
-                state.update(Some(line_number), &line?)?;
+                state.update(&line?, Some(line_number))?;
             }
         }
         ExecMode::InteractiveWithoutFile => {}
@@ -55,7 +55,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
                 let input = rl.readline(">> ");
                 match input {
                     Ok(line) => {
-                        if let Err(err) = state.update(None, &line) {
+                        if let Err(err) = state.update(&line, None) {
                             match err.interactive_handling() {
                                 InteractiveHandling::Error => return Err(err),
                                 InteractiveHandling::Warning => println!("Warning: {err}"),
@@ -102,18 +102,17 @@ impl State {
         }
     }
 
-    fn update(&mut self, line_number: Option<usize>, line: &str) -> Result<(), ExpertSystemError> {
+    fn update(&mut self, line: &str, line_number: Option<usize>) -> Result<(), ExpertSystemError> {
         fn parse_variables(
             chars: &[char],
             error_fn: impl Fn(LineInfo, char) -> ExpertSystemError,
-            line_number: Option<usize>,
-            line: &str,
+            line_info: &LineInfo,
         ) -> Result<Vec<char>, ExpertSystemError> {
             let mut variables = Vec::with_capacity(chars.len());
             for &c in chars {
                 match c {
                     'A'..='Z' => variables.push(c),
-                    _ => return Err(error_fn(line_info(line_number, line), c)),
+                    _ => return Err(error_fn(line_info.clone(), c)),
                 }
             }
             Ok(variables)
@@ -130,32 +129,23 @@ impl State {
 
         self.empty_file = false;
 
+        let line_info = line_number.map(|ln| (ln, line.to_owned()));
+
         match chars[0] {
             '=' => {
-                self.facts = parse_variables(
-                    &chars[1..],
-                    ExpertSystemError::InvalidFact,
-                    line_number,
-                    line,
-                )?;
+                self.facts =
+                    parse_variables(&chars[1..], ExpertSystemError::InvalidFact, &line_info)?;
                 let mut rule_with_facts = self.global_rule.clone();
                 rule_with_facts.set_facts(&self.facts);
                 if !rule_with_facts.is_satisfiable() {
-                    return Err(ExpertSystemError::Contradiction(line_info(
-                        line_number,
-                        line,
-                    )));
+                    return Err(ExpertSystemError::Contradiction(line_info));
                 }
                 self.got_facts = true;
                 self.last_is_query = false;
             }
             '?' => {
-                let queries = parse_variables(
-                    &chars[1..],
-                    ExpertSystemError::InvalidQuery,
-                    line_number,
-                    line,
-                )?;
+                let queries =
+                    parse_variables(&chars[1..], ExpertSystemError::InvalidQuery, &line_info)?;
                 let results = query(self.global_rule.clone(), &self.facts, &queries);
                 println!("={}:", self.facts.iter().collect::<String>());
                 for (fact, value) in results.iter().sorted() {
@@ -165,16 +155,13 @@ impl State {
                 self.last_is_query = true;
             }
             _ => {
-                let mut new_rule = Rule::parse(&chars, line_number, line)?;
+                let mut new_rule = Rule::parse(&chars, &line_info)?;
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
                 self.global_rule.merge(new_rule);
                 if !self.global_rule.is_satisfiable() {
-                    return Err(ExpertSystemError::Contradiction(line_info(
-                        line_number,
-                        line,
-                    )));
+                    return Err(ExpertSystemError::Contradiction(line_info));
                 }
                 self.last_is_query = false;
             }

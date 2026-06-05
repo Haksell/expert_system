@@ -1,9 +1,5 @@
 pub type LineInfo = Option<(usize, String)>;
 
-pub fn line_info(line_number: Option<usize>, line: &str) -> LineInfo {
-    line_number.map(|ln| (ln, line.to_owned()))
-}
-
 fn display_line(line_info: &LineInfo) -> String {
     match line_info {
         Some((line_number, line)) => format!(" at line {line_number}:\n`{line}`"),
