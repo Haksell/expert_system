@@ -2,13 +2,13 @@ B & C => A
 D ^ E => B
 B => C
 
-?A # Ambiguous
+?A # false
 
 =D
-?A # Ambiguous
+?A # true
 
 =E
-?A # Ambiguous
+?A # true
 
 =DE
-?A # Ambiguous
+?A # false

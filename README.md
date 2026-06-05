@@ -2,8 +2,9 @@
 
 ## todo
 
-- todo: retarded no ambiguity of subject
+- retarded no ambiguity of subject
 - testing of update
+- tests with ambiguity in mandatory subject mode
 - better test with xor
 - testing with false
 - testing of parsing

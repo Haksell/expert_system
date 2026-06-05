@@ -9,5 +9,5 @@ N => M
 
 =DEIJOP # AFKP true
 ?AFKP
-=DEIJP # AFP true, K ambiguous
+=DEIJP # AFP true, K false
 ?AFKP

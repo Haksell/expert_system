@@ -1,12 +1,12 @@
 use crate::{
-    Troolean,
+    Quadrulean,
     error::{ExpertSystemError, InteractiveHandling, LineInfo},
     rule::Rule,
 };
 use itertools::Itertools as _;
 use rustyline::error::ReadlineError;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::File,
     io::{BufRead as _, BufReader},
     path::PathBuf,
@@ -15,7 +15,9 @@ use std::{
 #[expect(clippy::struct_excessive_bools)]
 struct State {
     global_rule: Rule,
-    facts: Vec<char>,
+    given_facts: HashSet<char>,
+    // TODO: better name
+    implied_facts: HashSet<char>,
     got_facts: bool,
     got_queries: bool,
     last_is_query: bool,
@@ -37,7 +39,7 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
             let file = File::open(filename)?;
             let reader = BufReader::new(file);
             for (line_number, line) in reader.lines().enumerate() {
-                state.update(&line?, Some(line_number))?;
+                state.update(&line?, Some(line_number + 1))?;
             }
         }
         ExecMode::InteractiveWithoutFile => {}
@@ -91,10 +93,11 @@ pub fn exec(mode: &ExecMode) -> Result<(), ExpertSystemError> {
 }
 
 impl State {
-    const fn new() -> Self {
+    fn new() -> Self {
         Self {
             global_rule: Rule::tautology(),
-            facts: Vec::new(),
+            given_facts: HashSet::new(),
+            implied_facts: HashSet::new(),
             got_facts: false,
             got_queries: false,
             last_is_query: false,
@@ -107,11 +110,13 @@ impl State {
             chars: &[char],
             error_fn: impl Fn(LineInfo, char) -> ExpertSystemError,
             line_info: &LineInfo,
-        ) -> Result<Vec<char>, ExpertSystemError> {
-            let mut variables = Vec::with_capacity(chars.len());
+        ) -> Result<HashSet<char>, ExpertSystemError> {
+            let mut variables = HashSet::with_capacity(chars.len());
             for &c in chars {
                 match c {
-                    'A'..='Z' => variables.push(c),
+                    'A'..='Z' => {
+                        variables.insert(c);
+                    }
                     _ => return Err(error_fn(line_info.clone(), c)),
                 }
             }
@@ -133,10 +138,10 @@ impl State {
 
         match chars[0] {
             '=' => {
-                self.facts =
+                self.given_facts =
                     parse_variables(&chars[1..], ExpertSystemError::InvalidFact, &line_info)?;
                 let mut rule_with_facts = self.global_rule.clone();
-                rule_with_facts.set_facts(&self.facts);
+                rule_with_facts.set_facts(&self.given_facts, &self.implied_facts);
                 if !rule_with_facts.is_satisfiable() {
                     return Err(ExpertSystemError::Contradiction(line_info));
                 }
@@ -146,8 +151,14 @@ impl State {
             '?' => {
                 let queries =
                     parse_variables(&chars[1..], ExpertSystemError::InvalidQuery, &line_info)?;
-                let results = query(self.global_rule.clone(), &self.facts, &queries);
-                println!("={}:", self.facts.iter().collect::<String>());
+                let results = query(
+                    self.global_rule.clone(),
+                    &self.given_facts,
+                    &self.implied_facts,
+                    &queries,
+                );
+                // TODO: better print
+                println!("={}:", self.given_facts.iter().collect::<String>());
                 for (fact, value) in results.iter().sorted() {
                     println!("{fact} is {value:?}");
                 }
@@ -155,7 +166,8 @@ impl State {
                 self.last_is_query = true;
             }
             _ => {
-                let mut new_rule = Rule::parse(&chars, &line_info)?;
+                let (mut new_rule, new_implied_facts) = Rule::parse(&chars, &line_info)?;
+                self.implied_facts.extend(&new_implied_facts);
                 while new_rule.apply_de_morgan() {}
                 new_rule.remove_xor_not_not();
                 new_rule.remove_double_negation();
@@ -171,17 +183,26 @@ impl State {
     }
 }
 
-pub fn query(mut rule: Rule, facts: &[char], queries: &[char]) -> HashMap<char, Troolean> {
-    rule.set_facts(facts);
+// TODO: inside impl State
+pub fn query(
+    mut rule: Rule,
+    given_facts: &HashSet<char>,
+    implied_facts: &HashSet<char>,
+    queries: &HashSet<char>,
+) -> HashMap<char, Quadrulean> {
+    // println!("{given_facts:?} {implied_facts:?}");
+    rule.set_facts(given_facts, implied_facts);
+    // println!("{rule:#?}");
 
     let mut results = HashMap::new();
     for &query in queries {
-        let result = if facts.contains(&query) || !rule.is_satisfiable_with_fact(query, false) {
-            Troolean::True
-        } else if !rule.is_satisfiable_with_fact(query, true) {
-            Troolean::False
+        let can_be_false =
+            !given_facts.contains(&query) && rule.is_satisfiable_with_fact(query, false);
+        // let can_be_true = rule.is_satisfiable_with_fact(query, true);
+        let result = if can_be_false {
+            Quadrulean::False
         } else {
-            Troolean::Ambiguous
+            Quadrulean::True
         };
         results.insert(query, result);
     }

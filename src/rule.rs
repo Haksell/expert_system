@@ -14,11 +14,15 @@ pub enum Rule {
 }
 
 impl Rule {
-    pub fn parse(chars: &[char], line_info: &LineInfo) -> Result<Self, ExpertSystemError> {
+    pub fn parse(
+        chars: &[char],
+        line_info: &LineInfo,
+    ) -> Result<(Self, HashSet<char>), ExpertSystemError> {
         let tokens = Self::tokenize(chars, line_info)?;
-        Self::check(&tokens, line_info)?;
+        let implied_facts = Self::check(&tokens, line_info)?;
         let tokens = Self::infix_to_rpn(tokens);
-        Self::build(tokens, line_info)
+        let rule = Self::build(tokens, line_info)?;
+        Ok((rule, implied_facts))
     }
 
     fn tokenize(chars: &[char], line_info: &LineInfo) -> Result<Vec<Token>, ExpertSystemError> {
@@ -78,9 +82,11 @@ impl Rule {
         Ok(tokens)
     }
 
-    fn check(tokens: &[Token], line_info: &LineInfo) -> Result<(), ExpertSystemError> {
+    fn check(tokens: &[Token], line_info: &LineInfo) -> Result<HashSet<char>, ExpertSystemError> {
         let mut cnt_open = 0;
-        let mut found_implication = false;
+        let mut implication_type = None;
+        let mut facts_before_implication = HashSet::new();
+        let mut facts_after_implication = HashSet::new();
 
         for token in tokens {
             match token {
@@ -92,7 +98,7 @@ impl Rule {
                     cnt_open -= 1;
                 }
                 Token::Implication | Token::ConverseImplication | Token::Equivalence => {
-                    if found_implication {
+                    if implication_type.is_some() {
                         return Err(ExpertSystemError::MultipleImplications(line_info.clone()));
                     }
                     if cnt_open != 0 {
@@ -100,20 +106,42 @@ impl Rule {
                             line_info.clone(),
                         ));
                     }
-                    found_implication = true;
+                    implication_type = Some(token);
                 }
-                Token::Fact(_) | Token::Xor | Token::Or | Token::And | Token::Not => {}
+                Token::Fact(c) => {
+                    if implication_type.is_some() {
+                        facts_after_implication.insert(*c);
+                    } else {
+                        facts_before_implication.insert(*c);
+                    }
+                }
+                Token::Xor | Token::Or | Token::And | Token::Not => {}
             }
         }
 
-        if !found_implication {
-            return Err(ExpertSystemError::MissingImplication(line_info.clone()));
-        }
         if cnt_open != 0 {
             return Err(ExpertSystemError::UnbalancedParentheses(line_info.clone()));
         }
 
-        Ok(())
+        let Some(implication_type) = implication_type else {
+            return Err(ExpertSystemError::MissingImplication(line_info.clone()));
+        };
+
+        Ok(match implication_type {
+            Token::Equivalence => {
+                facts_before_implication.extend(facts_after_implication);
+                facts_before_implication
+            }
+            Token::Implication => facts_after_implication,
+            Token::ConverseImplication => facts_before_implication,
+            Token::Fact(_)
+            | Token::Xor
+            | Token::Or
+            | Token::And
+            | Token::Not
+            | Token::LeftParenthesis
+            | Token::RightParenthesis => unreachable!(),
+        })
     }
 
     // TODO: handle broken input (A&B|)
@@ -305,26 +333,27 @@ impl Rule {
         }
     }
 
-    pub fn set_facts(&mut self, facts: &[char]) {
-        for f in facts {
-            self.set_fact(*f);
-        }
-    }
-
-    // TODO: remove clones
-    fn set_fact(&mut self, c: char) {
+    pub fn set_facts(&mut self, given_facts: &HashSet<char>, implied_facts: &HashSet<char>) {
         match self {
-            Self::Fact(f) if *f == c => *self = Self::Bool(true),
-            Self::Bool(_) | Self::Fact(_) => {}
+            Self::Fact(f) => {
+                if given_facts.contains(f) {
+                    // println!("{f}: true");
+                    *self = Self::Bool(true);
+                } else if !implied_facts.contains(f) {
+                    // println!("{f}: false");
+                    *self = Self::Bool(false);
+                }
+            }
+            Self::Bool(_) => {}
             Self::Not(rule) => {
-                rule.set_fact(c);
+                rule.set_facts(given_facts, implied_facts);
                 if let Self::Bool(b) = rule.as_ref() {
                     *self = Self::Bool(!b);
                 }
             }
             Self::And(rule1, rule2) => {
-                rule1.set_fact(c);
-                rule2.set_fact(c);
+                rule1.set_facts(given_facts, implied_facts);
+                rule2.set_facts(given_facts, implied_facts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 && *b2),
                     (Self::Bool(true), child) | (child, Self::Bool(true)) => *self = child.clone(),
@@ -333,8 +362,8 @@ impl Rule {
                 }
             }
             Self::Or(rule1, rule2) => {
-                rule1.set_fact(c);
-                rule2.set_fact(c);
+                rule1.set_facts(given_facts, implied_facts);
+                rule2.set_facts(given_facts, implied_facts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 || *b2),
                     (Self::Bool(false), child) | (child, Self::Bool(false)) => {
@@ -345,8 +374,8 @@ impl Rule {
                 }
             }
             Self::Xor(rule1, rule2) => {
-                rule1.set_fact(c);
-                rule2.set_fact(c);
+                rule1.set_facts(given_facts, implied_facts);
+                rule2.set_facts(given_facts, implied_facts);
                 match (rule1.as_ref(), rule2.as_ref()) {
                     (Self::Bool(b1), Self::Bool(b2)) => *self = Self::Bool(*b1 ^ *b2),
                     (Self::Bool(true), Self::Not(child)) | (Self::Not(child), Self::Bool(true)) => {
@@ -386,7 +415,7 @@ impl Rule {
     }
 
     // TODO: remove (store variables directly in Rule)
-    fn get_variables(&self) -> Vec<char> {
+    pub fn get_variables(&self) -> Vec<char> {
         fn helper(tree: &Rule, variables: &mut HashSet<char>) {
             match tree {
                 Rule::Bool(_) => {}
@@ -410,21 +439,28 @@ impl Rule {
         &self,
         variables: &[char],
         idx: usize,
-        facts: &mut HashMap<char, bool>,
+        fact_values: &mut HashMap<char, bool>,
     ) -> bool {
         if idx == variables.len() {
-            return self.evaluate_with_variables(facts);
+            return self.evaluate_with_variables(fact_values);
         }
+
         let variable = variables[idx];
-        facts.insert(variable, false);
-        if self.is_satisfiable_with_facts(variables, idx + 1, facts) {
+
+        if fact_values.contains_key(&variable) {
+            return self.is_satisfiable_with_facts(variables, idx + 1, fact_values);
+        }
+
+        fact_values.insert(variable, false);
+        if self.is_satisfiable_with_facts(variables, idx + 1, fact_values) {
             return true;
         }
-        facts.insert(variable, true);
-        if self.is_satisfiable_with_facts(variables, idx + 1, facts) {
+        fact_values.insert(variable, true);
+        if self.is_satisfiable_with_facts(variables, idx + 1, fact_values) {
             return true;
         }
-        facts.remove_entry(&variable);
+        fact_values.remove_entry(&variable);
+
         false
     }
 

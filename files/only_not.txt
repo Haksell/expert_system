@@ -1,6 +1,6 @@
 B & !C => A
 
-?A # Ambiguous
+?A # False
 
 =B
 ?A # True

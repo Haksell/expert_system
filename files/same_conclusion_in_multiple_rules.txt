@@ -1,0 +1,14 @@
+B => A
+C => A
+
+=
+?A #false
+
+=B
+?A #true
+
+=C
+?A #true
+
+=BC
+?A #true
