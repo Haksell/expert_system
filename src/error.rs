@@ -15,6 +15,7 @@ pub enum ExpertSystemError {
     InvalidFact(LineInfo, char),
     InvalidQuery(LineInfo, char),
     ForbiddenTokenInConclusion(LineInfo, String),
+    EquivalenceNotSupportedInBackwardChaining(LineInfo),
     EmptyQuery(LineInfo),
     UnbalancedParentheses(LineInfo),
     MissingImplication(LineInfo),
@@ -53,7 +54,14 @@ impl std::fmt::Display for ExpertSystemError {
             Self::ForbiddenTokenInConclusion(line_info, token) => {
                 write!(
                     f,
-                    "forbidden token in conclusion: `{token}`{}",
+                    "forbidden token in conclusion with the backward chaining engine: `{token}`{}",
+                    display_line(line_info)
+                )
+            }
+            Self::EquivalenceNotSupportedInBackwardChaining(line_info) => {
+                write!(
+                    f,
+                    "equivalence not supported with the backward chaining engine{}",
                     display_line(line_info)
                 )
             }
@@ -108,6 +116,7 @@ impl ExpertSystemError {
             | Self::InvalidFact(_, _)
             | Self::InvalidQuery(_, _)
             | Self::ForbiddenTokenInConclusion(_, _)
+            | Self::EquivalenceNotSupportedInBackwardChaining(_)
             | Self::EmptyQuery(_)
             | Self::UnbalancedParentheses(_)
             | Self::MissingImplication(_)

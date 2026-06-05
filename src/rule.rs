@@ -103,6 +103,13 @@ impl Rule {
                     }
                     cnt_open -= 1;
                 }
+                Token::Equivalence if engine == InferenceEngine::BackwardChaining => {
+                    return Err(
+                        ExpertSystemError::EquivalenceNotSupportedInBackwardChaining(
+                            line_info.clone(),
+                        ),
+                    );
+                }
                 Token::Implication | Token::ConverseImplication | Token::Equivalence => {
                     if implication_type.is_some() {
                         return Err(ExpertSystemError::MultipleImplications(line_info.clone()));

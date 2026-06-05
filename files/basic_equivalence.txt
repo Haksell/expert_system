@@ -1,0 +1,7 @@
+A <=> B
+
+=
+?AB # both ambiguous
+
+=A
+?AB # both true

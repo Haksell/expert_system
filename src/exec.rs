@@ -272,8 +272,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
                 HashMap::from([('A', True), ('F', True), ('K', False), ('P', True)])
             ]
@@ -289,8 +289,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', False)]),
                 HashMap::from([('A', True)]),
                 HashMap::from([('A', True)]),
@@ -308,8 +308,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', False)]),
                 HashMap::from([('A', True)]),
                 HashMap::from([('A', True)]),
@@ -327,8 +327,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', False)]),
                 HashMap::from([('A', True)]),
                 HashMap::from([('A', False)]),
@@ -348,8 +348,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', False)]),
                 HashMap::from([('A', True)]),
                 HashMap::from([('A', True)]),
@@ -367,8 +367,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('E', False)]),
                 HashMap::from([('E', True)]),
                 HashMap::from([('E', False)]),
@@ -393,8 +393,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('A', True), ('F', True), ('K', True), ('P', True)]),
                 HashMap::from([('A', True), ('F', True), ('K', Ambiguous), ('P', True)])
             ]
@@ -410,8 +410,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('B', Ambiguous), ('C', Ambiguous)]),
                 HashMap::from([('B', False), ('C', True)]),
             ]
@@ -427,8 +427,8 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![
+            &query_results,
+            &[
                 HashMap::from([('B', Ambiguous), ('C', Ambiguous)]),
                 HashMap::from([('B', True), ('C', False)]),
             ]
@@ -444,8 +444,25 @@ mod tests {
         assert!(exec_result.is_ok());
         let query_results = exec_result.unwrap();
         assert_eq!(
-            query_results,
-            vec![HashMap::from([('A', True), ('B', True), ('C', True)])]
+            &query_results,
+            &[HashMap::from([('A', True), ('B', True), ('C', True)])]
+        );
+    }
+
+    #[test]
+    fn sat_solver_basic_equivalence() {
+        let exec_result = exec(
+            &ExecMode::OnlyFile(PathBuf::from("./files/basic_equivalence.txt")),
+            InferenceEngine::SatSolver,
+        );
+        assert!(exec_result.is_ok());
+        let query_results = exec_result.unwrap();
+        assert_eq!(
+            &query_results,
+            &[
+                HashMap::from([('A', Ambiguous), ('B', Ambiguous)]),
+                HashMap::from([('A', True), ('B', True)]),
+            ]
         );
     }
 }
